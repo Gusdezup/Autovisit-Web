@@ -133,6 +133,21 @@ Format URL Pushover : `pover://USER_KEY@API_TOKEN`
 - Ne partage jamais ton `sites.json`
 - `data/` est dans `.gitignore` — rien de ce dossier ne sera commité
 
+### Connexion
+
+Au premier lancement, les credentials par défaut sont `admin` / `autovisit`. Un avertissement est affiché dans les logs Docker. **Change-les immédiatement** depuis la page Paramètres de l'interface.
+
+### Mot de passe oublié
+
+Les credentials sont stockés dans `data/auth.json`. Pour réinitialiser :
+
+```bash
+rm /chemin/vers/data/auth.json
+docker compose restart autovisit-web
+```
+
+Au redémarrage, `auth.json` est recréé avec les credentials par défaut (`admin` / `autovisit`).
+
 ---
 
 ## Variables d'environnement

@@ -4,27 +4,133 @@ Autovisit Web UI — Flask backend
 """
 
 import json
+import logging
 import os
 import subprocess
 import threading
 import queue
 import signal
 import datetime
+import secrets
+import bcrypt
 import requests
 from datetime import datetime as dt
 from pathlib import Path
-from flask import Flask, render_template, request, jsonify, Response, stream_with_context
+from flask import Flask, render_template, request, jsonify, Response, stream_with_context, redirect, url_for, session
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
+
+# Logging : silence le logger HTTP de Werkzeug (requêtes GET/POST)
+logging.basicConfig(level=logging.WARNING)
+logging.getLogger("werkzeug").setLevel(logging.ERROR)
+log = logging.getLogger(__name__)
 
 DATA_DIR    = Path(os.environ.get("AUTOVISIT_DIR", "/data"))
 SITES_JSON  = DATA_DIR / "sites.json"
 STATUS_JSON = DATA_DIR / "status.json"
 LOGS_DIR    = DATA_DIR / "logs"
 SCRIPT      = Path(os.environ.get("AUTOVISIT_SCRIPT", "/app/autovisit.py"))
+AUTH_FILE   = DATA_DIR / "auth.json"
+
+# ─── Auth ──────────────────────────────────────────────────────────────────────
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "login_page"
+
+DEFAULT_USERNAME = "admin"
+DEFAULT_PASSWORD = "autovisit"
+
+class User(UserMixin):
+    def __init__(self, username):
+        self.id = username
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User(user_id)
+
+def load_auth():
+    if AUTH_FILE.exists():
+        with open(AUTH_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    # Premier lancement : créer auth.json avec credentials par défaut
+    hashed = bcrypt.hashpw(DEFAULT_PASSWORD.encode(), bcrypt.gensalt()).decode()
+    auth = {"username": DEFAULT_USERNAME, "password_hash": hashed, "is_default": True}
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    with open(AUTH_FILE, "w", encoding="utf-8") as f:
+        json.dump(auth, f, indent=2)
+    log.warning(
+        "=== PREMIER LANCEMENT — login: %s / mot de passe: %s ===",
+        DEFAULT_USERNAME, DEFAULT_PASSWORD
+    )
+    return auth
+
+def save_auth(username, password_hash):
+    auth = {"username": username, "password_hash": password_hash, "is_default": False}
+    with open(AUTH_FILE, "w", encoding="utf-8") as f:
+        json.dump(auth, f, indent=2)
+
+def check_password(plain, hashed):
+    return bcrypt.checkpw(plain.encode(), hashed.encode())
+
+# Initialiser auth au démarrage
+load_auth()
+
+# ─── Routes auth ───────────────────────────────────────────────────────────────
+
+@app.route("/login", methods=["GET"])
+def login_page():
+    if current_user.is_authenticated:
+        return redirect(url_for("index"))
+    return render_template("login.html")
+
+@app.route("/api/auth/login", methods=["POST"])
+def api_login():
+    data     = request.json or {}
+    username = data.get("username", "").strip()
+    password = data.get("password", "")
+    auth     = load_auth()
+    if username == auth["username"] and check_password(password, auth["password_hash"]):
+        login_user(User(username), remember=True)
+        return jsonify({"ok": True, "is_default": auth.get("is_default", False)})
+    return jsonify({"ok": False, "error": "Identifiants incorrects"}), 401
+
+@app.route("/api/auth/logout", methods=["POST"])
+@login_required
+def api_logout():
+    logout_user()
+    return jsonify({"ok": True})
+
+@app.route("/api/auth/change-password", methods=["POST"])
+@login_required
+def api_change_password():
+    data         = request.json or {}
+    current_pw   = data.get("current_password", "")
+    new_pw       = data.get("new_password", "")
+    new_username = data.get("username", "").strip()
+    auth         = load_auth()
+    if not check_password(current_pw, auth["password_hash"]):
+        return jsonify({"ok": False, "error": "Mot de passe actuel incorrect"}), 401
+    if len(new_pw) < 6:
+        return jsonify({"ok": False, "error": "Le mot de passe doit faire au moins 6 caractères"}), 400
+    if not new_username:
+        return jsonify({"ok": False, "error": "Le nom d'utilisateur ne peut pas être vide"}), 400
+    hashed = bcrypt.hashpw(new_pw.encode(), bcrypt.gensalt()).decode()
+    save_auth(new_username, hashed)
+    return jsonify({"ok": True})
+
+@app.route("/api/auth/status", methods=["GET"])
+@login_required
+def api_auth_status():
+    auth = load_auth()
+    return jsonify({"username": auth["username"], "is_default": auth.get("is_default", False)})
+
+# ─── Scheduler ─────────────────────────────────────────────────────────────────
 
 run_log_queue    = queue.Queue()
 run_lock         = threading.Lock()
@@ -65,13 +171,9 @@ def apply_schedule(sched):
             args=[args], id="autovisit_cron"
         )
     elif mode == "days":
-        # IntervalTrigger avec start_date à l'heure souhaitée
-        now = dt.now()
-        start = now.replace(
-            hour=sched.get("hour_d", 3),
-            minute=sched.get("minute_d", 0),
-            second=0, microsecond=0
-        )
+        now   = dt.now()
+        start = now.replace(hour=sched.get("hour_d", 3), minute=sched.get("minute_d", 0),
+                            second=0, microsecond=0)
         if start <= now:
             start += datetime.timedelta(days=1)
         scheduler.add_job(
@@ -91,6 +193,7 @@ def apply_schedule(sched):
 
 apply_schedule(load_schedule())
 
+# ─── Config ────────────────────────────────────────────────────────────────────
 
 def load_config():
     if not SITES_JSON.exists():
@@ -102,18 +205,22 @@ def save_config(cfg):
     with open(SITES_JSON, "w", encoding="utf-8") as f:
         json.dump(cfg, f, ensure_ascii=False, indent=2)
 
-
 # ─── Routes ────────────────────────────────────────────────────────────────────
 
 @app.route("/")
+@login_required
 def index():
     return render_template("index.html")
 
 @app.route("/<path:path>")
+@login_required
 def catch_all(path):
+    if path.startswith("api/"):
+        return jsonify({"error": "Not found"}), 404
     return render_template("index.html")
 
 @app.route("/api/status")
+@login_required
 def api_status():
     if STATUS_JSON.exists():
         with open(STATUS_JSON, encoding="utf-8") as f:
@@ -121,10 +228,12 @@ def api_status():
     return jsonify({"updated": None, "sites": []})
 
 @app.route("/api/sites", methods=["GET"])
+@login_required
 def api_sites_get():
     return jsonify(load_config())
 
 @app.route("/api/sites", methods=["POST"])
+@login_required
 def api_sites_post():
     cfg  = load_config()
     site = request.json
@@ -147,6 +256,7 @@ def api_sites_post():
     return jsonify({"ok": True})
 
 @app.route("/api/sites/<int:idx>", methods=["PUT"])
+@login_required
 def api_sites_put(idx):
     cfg = load_config()
     if idx < 0 or idx >= len(cfg["sites"]):
@@ -166,7 +276,6 @@ def api_sites_put(idx):
             except Exception:
                 site[dict_field] = {}
     site = {k: v for k, v in site.items() if v != "" and v != [] and v != {}}
-    # Préserver les champs non gérés par le drawer (stats, stats_json, playwright_submit, etc.)
     preserved_fields = ['stats', 'stats_json', 'playwright_submit', 'playwright_fetch_verify',
                         'stats_base', 'mp_url', 'mp_json_field', 'playwright_stats_url']
     existing = cfg["sites"][idx]
@@ -178,6 +287,7 @@ def api_sites_put(idx):
     return jsonify({"ok": True})
 
 @app.route("/api/sites/<int:idx>", methods=["DELETE"])
+@login_required
 def api_sites_delete(idx):
     cfg = load_config()
     if idx < 0 or idx >= len(cfg["sites"]):
@@ -187,6 +297,7 @@ def api_sites_delete(idx):
     return jsonify({"ok": True})
 
 @app.route("/api/sites/<int:idx>/toggle", methods=["POST"])
+@login_required
 def api_sites_toggle(idx):
     cfg = load_config()
     if idx < 0 or idx >= len(cfg["sites"]):
@@ -197,10 +308,12 @@ def api_sites_toggle(idx):
     return jsonify({"ok": True, "enabled": site["enabled"]})
 
 @app.route("/api/pushover", methods=["GET"])
+@login_required
 def api_pushover_get():
     return jsonify(load_config().get("pushover", {}))
 
 @app.route("/api/pushover", methods=["POST"])
+@login_required
 def api_pushover_post():
     cfg = load_config()
     cfg["pushover"] = request.json
@@ -208,36 +321,39 @@ def api_pushover_post():
     return jsonify({"ok": True})
 
 @app.route("/api/notifications", methods=["GET"])
+@login_required
 def api_notifications_get():
     cfg   = load_config()
     notif = cfg.get("notifications", {})
     return jsonify({
-        "apprise_url":                   notif.get("apprise_url", ""),
-        "urls":                          notif.get("urls", []),
-        "notify_error":                  notif.get("notify_error", True),
-        "notify_success":                notif.get("notify_success", False),
-        "notify_success_after_failure":  notif.get("notify_success_after_failure", True),
-        "notify_stats":                  notif.get("notify_stats", False),
-        "notify_mp":                     notif.get("notify_mp", True),
+        "apprise_url":                  notif.get("apprise_url", ""),
+        "urls":                         notif.get("urls", []),
+        "notify_error":                 notif.get("notify_error", True),
+        "notify_success":               notif.get("notify_success", False),
+        "notify_success_after_failure": notif.get("notify_success_after_failure", True),
+        "notify_stats":                 notif.get("notify_stats", False),
+        "notify_mp":                    notif.get("notify_mp", True),
     })
 
 @app.route("/api/notifications", methods=["POST"])
+@login_required
 def api_notifications_post():
     cfg  = load_config()
     data = request.json
     cfg["notifications"] = {
-        "apprise_url":                   data.get("apprise_url", "").rstrip("/"),
-        "urls":                          data.get("urls", []),
-        "notify_error":                  bool(data.get("notify_error", True)),
-        "notify_success":                bool(data.get("notify_success", False)),
-        "notify_success_after_failure":  bool(data.get("notify_success_after_failure", True)),
-        "notify_stats":                  bool(data.get("notify_stats", False)),
-        "notify_mp":                     bool(data.get("notify_mp", True)),
+        "apprise_url":                  data.get("apprise_url", "").rstrip("/"),
+        "urls":                         data.get("urls", []),
+        "notify_error":                 bool(data.get("notify_error", True)),
+        "notify_success":               bool(data.get("notify_success", False)),
+        "notify_success_after_failure": bool(data.get("notify_success_after_failure", True)),
+        "notify_stats":                 bool(data.get("notify_stats", False)),
+        "notify_mp":                    bool(data.get("notify_mp", True)),
     }
     save_config(cfg)
     return jsonify({"ok": True})
 
 @app.route("/api/notifications/test", methods=["POST"])
+@login_required
 def api_notifications_test():
     cfg    = load_config()
     notif  = cfg.get("notifications", {})
@@ -261,10 +377,12 @@ def api_notifications_test():
         return jsonify({"ok": False, "error": str(e)})
 
 @app.route("/api/schedule", methods=["GET"])
+@login_required
 def api_schedule_get():
     return jsonify(load_schedule())
 
 @app.route("/api/schedule", methods=["POST"])
+@login_required
 def api_schedule_post():
     data = request.json
     save_schedule(data)
@@ -272,12 +390,12 @@ def api_schedule_post():
     return jsonify({"ok": True})
 
 @app.route("/api/run", methods=["POST"])
+@login_required
 def api_run():
     global current_run_proc
     data     = request.json or {}
-    site_arg = data.get("site")   # string : "Site1 Site2 ..." ou None
+    site_arg = data.get("site")
     flags    = data.get("flags", "--mp --error --json-output")
-    multi    = data.get("multi", False)
     if "--json-output" not in flags:
         flags += " --json-output"
     if not run_lock.acquire(blocking=False):
@@ -288,7 +406,6 @@ def api_run():
         try:
             args = ["python3", str(SCRIPT)] + flags.split()
             if site_arg:
-                # Plusieurs sites : --site Site1 Site2 ...
                 sites = site_arg.split() if isinstance(site_arg, str) else site_arg
                 args += ["--site"] + sites
             current_run_proc = subprocess.Popen(
@@ -308,6 +425,7 @@ def api_run():
     return jsonify({"ok": True})
 
 @app.route("/api/run/stop", methods=["POST"])
+@login_required
 def api_run_stop():
     global current_run_proc
     if current_run_proc and current_run_proc.poll() is None:
@@ -316,6 +434,7 @@ def api_run_stop():
     return jsonify({"ok": False, "error": "Aucun run en cours"})
 
 @app.route("/api/run/stream")
+@login_required
 def api_run_stream():
     def generate():
         while True:
@@ -332,6 +451,7 @@ def api_run_stream():
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 @app.route("/api/logs")
+@login_required
 def api_logs_list():
     if not LOGS_DIR.exists():
         return jsonify([])
@@ -339,6 +459,7 @@ def api_logs_list():
     return jsonify([f.name for f in files])
 
 @app.route("/api/logs/<filename>")
+@login_required
 def api_logs_file(filename):
     path = LOGS_DIR / filename
     if not path.exists() or not filename.startswith("visit_"):
@@ -351,6 +472,7 @@ def api_logs_file(filename):
     return jsonify({"lines": chunk, "total": total})
 
 @app.route("/api/running")
+@login_required
 def api_running():
     return jsonify({"running": current_run_proc is not None and current_run_proc.poll() is None})
 

@@ -681,8 +681,10 @@ body {
     <div class="nav-section" style="margin-top:16px">Config</div>
     <div class="nav-item" data-page="schedule"><span class="nav-icon">◷</span> Planification</div>
     <div class="nav-item" data-page="notifications"><span class="nav-icon">◎</span> Notifications</div>
+    <div class="nav-item" data-page="settings"><span class="nav-icon">⚙</span> Paramètres</div>
     <div class="nav-spacer"></div>
     <button class="run-btn" id="sidebar-run-btn" onclick="quickRun()">▶ Tout visiter</button>
+    <button class="run-btn" style="background:transparent;border:1px solid var(--border2);color:var(--text2);margin-top:8px;font-size:11px;" onclick="doLogout()">⏻ Déconnexion</button>
   </nav>
 
   <!-- Main -->
@@ -923,6 +925,37 @@ body {
           <button class="btn btn-ghost" onclick="testNotifications()">Tester</button>
         </div>
         <div id="notif-result" style="margin-top:12px"></div>
+      </div>
+    </div>
+
+    <!-- PARAMÈTRES -->
+    <div class="page" id="page-settings">
+      <div class="page-title">Paramètres</div>
+      <div class="page-sub">Compte et accès</div>
+      <div class="card">
+        <div class="form-section">
+          <div class="form-section-title">Changer les credentials</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Nouvel identifiant</label>
+              <input type="text" class="form-input" id="set-username" autocomplete="off">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Mot de passe actuel</label>
+              <input type="password" class="form-input" id="set-current-pw" autocomplete="current-password">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Nouveau mot de passe</label>
+              <input type="password" class="form-input" id="set-new-pw" autocomplete="new-password">
+            </div>
+          </div>
+          <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+            <button class="btn btn-primary" onclick="saveCredentials()">Enregistrer</button>
+            <span id="set-result" style="font-size:12px"></span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1750,9 +1783,12 @@ function showNotice(elId, msg, type) {
 
 // ─── Polling indicateur running ───────────────────────────────────────────────
 async function pollRunning() {
-  const res  = await fetch('/api/running');
-  const data = await res.json();
-  if (!runSSE) setRunIndicator(data.running);
+  try {
+    const res = await fetch('/api/running');
+    if (!res.ok) return; // 401/302 = non connecté, on ignore silencieusement
+    const data = await res.json();
+    if (!runSSE) setRunIndicator(data.running);
+  } catch(e) {}
 }
 setInterval(pollRunning, 5000);
 
@@ -1760,6 +1796,53 @@ setInterval(pollRunning, 5000);
 const initPage = location.pathname.replace('/', '').replace('/', '') || 'dashboard';
 navigateTo(initPage, false);
 updateSchedPreview();
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+async function doLogout() {
+  await fetch('/api/auth/logout', {method: 'POST'});
+  window.location.href = '/login';
+}
+
+async function loadAuthStatus() {
+  try {
+    const res  = await fetch('/api/auth/status');
+    const data = await res.json();
+    const el = document.getElementById('set-username');
+    if (el && data.username) el.value = data.username;
+  } catch(e) {}
+}
+
+async function saveCredentials() {
+  const username  = document.getElementById('set-username').value.trim();
+  const currentPw = document.getElementById('set-current-pw').value;
+  const newPw     = document.getElementById('set-new-pw').value;
+  const result    = document.getElementById('set-result');
+
+  if (!username || !currentPw || !newPw) {
+    result.style.color = 'var(--err)';
+    result.textContent = 'Tous les champs sont requis.';
+    return;
+  }
+
+  const res  = await fetch('/api/auth/change-password', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({username, current_password: currentPw, new_password: newPw})
+  });
+  const data = await res.json();
+  if (data.ok) {
+    result.style.color = 'var(--accent)';
+    result.textContent = 'Credentials mis à jour.';
+    document.getElementById('set-current-pw').value = '';
+    document.getElementById('set-new-pw').value = '';
+  } else {
+    result.style.color = 'var(--err)';
+    result.textContent = data.error || 'Erreur.';
+  }
+  setTimeout(() => { result.textContent = ''; }, 3000);
+}
+
+loadAuthStatus();
 </script>
 </body>
 </html>
