@@ -1,0 +1,21 @@
+# Données utilisateur — ne jamais commiter
+data/sites.json
+data/status.json
+data/logs/
+data/schedule.json
+data/__pycache__/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log

@@ -1,0 +1,90 @@
+{
+  "pushover": {
+    "api_token": "YOUR_PUSHOVER_API_TOKEN",
+    "user_key": "YOUR_PUSHOVER_USER_KEY"
+  },
+  "notifications": {
+    "apprise_url": "http://your-apprise-server:8000",
+    "urls": [],
+    "notify_error": true,
+    "notify_success": false,
+    "notify_success_after_failure": true,
+    "notify_stats": false,
+    "notify_mp": true
+  },
+  "sites": [
+    {
+      "_comment": "Site simple — login par formulaire",
+      "name": "MonSite",
+      "aliases": ["ms"],
+      "url": "https://monsite.example.com/login",
+      "post_url": "https://monsite.example.com/login",
+      "verify_url": "https://monsite.example.com/torrents",
+      "username": "mon_login",
+      "password": "mon_password",
+      "username_field": "username",
+      "password_field": "password",
+      "success_keywords": ["Bienvenue", "mon_login"],
+      "alert_keywords": ["nouveau message"],
+      "enabled": true
+    },
+    {
+      "_comment": "Site avec TOTP (2FA)",
+      "name": "SiteTotp",
+      "aliases": ["st"],
+      "url": "https://sitetotp.example.com/login",
+      "post_url": "https://sitetotp.example.com/login",
+      "verify_url": "https://sitetotp.example.com/index",
+      "username": "mon_login",
+      "password": "mon_password",
+      "username_field": "username",
+      "password_field": "password",
+      "totp_secret": "BASE32SECRETKEY",
+      "totp_url": "https://sitetotp.example.com/2fa",
+      "totp_field": "otp",
+      "success_keywords": ["mon_login"],
+      "enabled": true
+    },
+    {
+      "_comment": "Site avec stats HTML scraping",
+      "name": "SiteStats",
+      "aliases": ["ss"],
+      "url": "https://sitestats.example.com/login",
+      "post_url": "https://sitestats.example.com/login",
+      "verify_url": "https://sitestats.example.com/profile",
+      "username": "mon_login",
+      "password": "mon_password",
+      "username_field": "username",
+      "password_field": "password",
+      "success_keywords": ["mon_login"],
+      "stats": {
+        "upload":   "Uploaded.*?<[^>]+>([\\d.,]+ [KMGT]?[io])",
+        "download": "Downloaded.*?<[^>]+>([\\d.,]+ [KMGT]?[io])",
+        "ratio":    "Ratio.*?<[^>]+>([\\d.]+)"
+      },
+      "enabled": true
+    },
+    {
+      "_comment": "Site Cloudflare via curl_cffi + stats JSON API",
+      "name": "SiteCurl",
+      "aliases": ["sc"],
+      "url": "https://sitecurl.example.com/login",
+      "post_url": "https://sitecurl.example.com/api/login",
+      "verify_url": "https://sitecurl.example.com/api/user",
+      "username": "mon_login",
+      "password": "mon_password",
+      "username_field": "username",
+      "password_field": "password",
+      "use_curl_cffi": true,
+      "api_json": true,
+      "success_json_field": "username",
+      "success_keywords": ["mon_login"],
+      "stats_json": {
+        "upload":   "user.uploaded",
+        "download": "user.downloaded",
+        "ratio":    "user.ratio"
+      },
+      "enabled": true
+    }
+  ]
+}

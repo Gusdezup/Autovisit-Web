@@ -1,0 +1,1782 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autovisit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0d0f12;
+  --bg2:      #13161b;
+  --bg3:      #1a1e26;
+  --border:   #252a35;
+  --border2:  #2f3645;
+  --text:     #c8d0de;
+  --text2:    #6b7a95;
+  --text3:    #3d4a60;
+  --accent:   #4ade80;
+  --accent2:  #22c55e;
+  --err:      #f87171;
+  --warn:     #fbbf24;
+  --info:     #60a5fa;
+  --mono:     'IBM Plex Mono', monospace;
+  --sans:     'IBM Plex Sans', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ── Layout ── */
+.shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: 48px 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Topbar ── */
+.topbar {
+  grid-column: 1 / -1;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 16px;
+}
+.topbar-logo {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: .04em;
+}
+.topbar-logo span { color: var(--text2); font-weight: 400; }
+.topbar-spacer { flex: 1; }
+.topbar-status {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text2);
+}
+.topbar-status .dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--text3);
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.topbar-status.running .dot { background: var(--accent); animation: blink 1s infinite; }
+.topbar-status.running { color: var(--accent); }
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ── Sidebar ── */
+.sidebar {
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 12px 0;
+  overflow-y: auto;
+}
+.nav-section {
+  padding: 8px 16px 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text3);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  cursor: pointer;
+  color: var(--text2);
+  font-size: 13px;
+  border-left: 2px solid transparent;
+  transition: all .15s;
+  user-select: none;
+}
+.nav-item:hover { color: var(--text); background: var(--bg3); }
+.nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(74,222,128,.06); }
+.nav-icon { width: 16px; text-align: center; font-size: 14px; }
+
+.nav-spacer { flex: 1; }
+
+.run-btn {
+  margin: 12px;
+  padding: 10px;
+  background: var(--accent);
+  color: #051a0f;
+  border: none;
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: background .15s, transform .1s;
+  letter-spacing: .04em;
+}
+.run-btn:hover { background: var(--accent2); }
+.run-btn:active { transform: scale(.97); }
+.run-btn.running { background: var(--err); color: #fff; }
+
+/* ── Main ── */
+.main {
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+/* ── Pages ── */
+.page { display: none; padding: 28px; animation: fadein .2s ease; }
+.page.active { display: block; }
+@keyframes fadein { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+
+.page-title {
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.page-sub {
+  font-size: 12px;
+  color: var(--text2);
+  margin-bottom: 24px;
+}
+
+/* ── Cards ── */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Dashboard grid ── */
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.site-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .2s;
+  display: flex;
+  flex-direction: column;
+}
+.site-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--text3);
+  transition: background .2s;
+}
+.site-card.ok::before  { background: var(--accent); }
+.site-card.err::before { background: var(--err); }
+.site-card.warn::before { background: var(--warn); }
+.site-card.disabled { opacity: .45; }
+
+.site-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.site-badge {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--text3);
+  flex-shrink: 0;
+}
+.site-card.ok  .site-badge { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.site-card.err .site-badge { background: var(--err); box-shadow: 0 0 6px var(--err); }
+.site-card.warn .site-badge { background: var(--warn); }
+
+.site-name {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+}
+.site-url {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.site-status-text {
+  font-size: 11px;
+  color: var(--text2);
+}
+.site-card.ok  .site-status-text { color: var(--accent); }
+.site-card.err .site-status-text { color: var(--err); }
+.site-alert {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--warn);
+  font-family: var(--mono);
+}
+.site-stats {
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--text2);
+  font-family: var(--mono);
+  line-height: 1.8;
+}
+.site-tags {
+  margin-top: 10px;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text3);
+  letter-spacing: .04em;
+}
+.tag.totp  { color: var(--info); border-color: rgba(96,165,250,.3); }
+.tag.curl  { color: var(--warn); border-color: rgba(251,191,36,.3); }
+.tag.pw    { color: #c084fc; border-color: rgba(192,132,252,.3); }
+
+/* ── Actions sur carte ── */
+.site-card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.site-card-action {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text2);
+  font-size: 10px;
+  font-family: var(--mono);
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all .15s;
+  flex: 1;
+  text-align: center;
+}
+.site-card-action:hover { border-color: var(--accent); color: var(--accent); background: rgba(74,222,128,.05); }
+.site-card-action.danger:hover { border-color: var(--err); color: var(--err); background: rgba(248,113,113,.05); }
+.site-card-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+/* ── Indicateurs fonctions ── */
+.site-features {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.feature-badge {
+  font-size: 9px;
+  font-family: var(--mono);
+  padding: 2px 7px;
+  border-radius: 10px;
+  letter-spacing: .03em;
+}
+.feature-badge.stats { background: rgba(96,165,250,.12); color: var(--info); border: 1px solid rgba(96,165,250,.25); }
+.feature-badge.mp    { background: rgba(251,191,36,.12);  color: var(--warn); border: 1px solid rgba(251,191,36,.25); }
+
+.site-last-seen {
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--text3);
+  font-family: var(--mono);
+}
+
+.updated-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text3);
+  margin-bottom: 20px;
+}
+
+/* ── Sites list ── */
+.sites-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.sites-table th {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.sites-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  vertical-align: middle;
+}
+.sites-table tr:last-child td { border-bottom: none; }
+.sites-table tr:hover td { background: var(--bg3); }
+.sites-table td.mono { font-family: var(--mono); font-size: 11px; }
+
+.tbl-actions { display: flex; gap: 6px; }
+.btn-icon {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  border-radius: 4px;
+  width: 28px; height: 28px;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.btn-icon:hover { border-color: var(--border2); color: var(--text); background: var(--bg3); }
+.btn-icon.danger:hover { border-color: var(--err); color: var(--err); }
+.btn-icon.success:hover { border-color: var(--accent); color: var(--accent); }
+
+.toggle-pill {
+  width: 36px; height: 20px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  cursor: pointer;
+  position: relative;
+  transition: background .2s;
+  flex-shrink: 0;
+}
+.toggle-pill::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--text3);
+  transition: all .2s;
+}
+.toggle-pill.on { background: rgba(74,222,128,.2); border-color: var(--accent); }
+.toggle-pill.on::after { left: 18px; background: var(--accent); }
+
+/* ── Modal / Drawer ── */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  z-index: 100;
+  backdrop-filter: blur(2px);
+}
+.overlay.open { display: flex; align-items: flex-start; justify-content: flex-end; }
+
+.drawer {
+  width: 560px;
+  height: 100vh;
+  background: var(--bg2);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  animation: slideIn .2s ease;
+  overflow: hidden;
+}
+@keyframes slideIn { from{transform:translateX(30px);opacity:0} to{transform:translateX(0);opacity:1} }
+
+.drawer-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.drawer-title {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+}
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+.drawer-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* ── Forms ── */
+.form-section {
+  margin-bottom: 24px;
+}
+.form-section-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.form-row.full { grid-template-columns: 1fr; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-label {
+  font-size: 11px;
+  color: var(--text2);
+  font-family: var(--mono);
+}
+.form-label .opt { color: var(--text3); font-weight: 400; }
+.form-input, .form-select, .form-textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 8px 10px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  outline: none;
+  transition: border-color .15s;
+  width: 100%;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color: var(--accent);
+}
+.form-textarea { resize: vertical; min-height: 60px; }
+.form-select { appearance: none; cursor: pointer; }
+.form-hint { font-size: 10px; color: var(--text3); }
+
+.form-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.form-toggle-row:last-child { border-bottom: none; }
+.form-toggle-label { font-size: 12px; color: var(--text); }
+.form-toggle-sub { font-size: 10px; color: var(--text2); margin-top: 2px; }
+
+/* Buttons */
+.btn {
+  padding: 8px 16px;
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all .15s;
+  letter-spacing: .03em;
+}
+.btn-primary { background: var(--accent); color: #051a0f; }
+.btn-primary:hover { background: var(--accent2); }
+.btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+.btn-ghost:hover { border-color: var(--border2); color: var(--text); }
+.btn-danger { background: transparent; color: var(--err); border: 1px solid rgba(248,113,113,.3); }
+.btn-danger:hover { background: rgba(248,113,113,.1); }
+.btn-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  background: transparent;
+  border: 1px dashed var(--border2);
+  border-radius: 6px;
+  color: var(--text2);
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all .15s;
+  width: 100%;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.btn-add:hover { border-color: var(--accent); color: var(--accent); background: rgba(74,222,128,.05); }
+
+/* ── Terminal / Logs ── */
+.terminal {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.7;
+  padding: 16px;
+  height: 400px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.terminal .l-info  { color: var(--text); }
+.terminal .l-ok    { color: var(--accent); }
+.terminal .l-err   { color: var(--err); }
+.terminal .l-warn  { color: var(--warn); }
+.terminal .l-meta  { color: var(--text3); }
+
+.log-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.log-file-select { flex: 1; min-width: 180px; }
+
+/* ── Schedule ── */
+.schedule-row {
+  display: grid;
+  grid-template-columns: 100px 100px 1fr;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
+/* ── Run panel ── */
+.run-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+/* ── Misc ── */
+.notice {
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+.notice.info { background: rgba(96,165,250,.08); border: 1px solid rgba(96,165,250,.2); color: var(--info); }
+.notice.warn { background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.2); color: var(--warn); }
+.notice.ok   { background: rgba(74,222,128,.08); border: 1px solid rgba(74,222,128,.2); color: var(--accent); }
+.notice.err  { background: rgba(248,113,113,.08); border: 1px solid rgba(248,113,113,.2); color: var(--err); }
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text3);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.empty-state .big { font-size: 32px; margin-bottom: 12px; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+/* Stats bar on dashboard */
+.dash-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.stat-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+}
+.stat-val {
+  font-family: var(--mono);
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.stat-val.green { color: var(--accent); }
+.stat-val.red   { color: var(--err); }
+.stat-val.yellow{ color: var(--warn); }
+.stat-label { font-size: 11px; color: var(--text2); }
+
+.run-site-select { display: flex; gap: 8px; margin-bottom: 12px; }
+.run-site-select select { flex: 1; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar-logo">autovisit<span>.web</span></div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-status" id="run-indicator">
+      <span class="dot"></span><span id="run-status-text">idle</span>
+    </div>
+  </header>
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="nav-section">Navigation</div>
+    <div class="nav-item active" data-page="dashboard"><span class="nav-icon">◈</span> Dashboard</div>
+    <div class="nav-item" data-page="run"><span class="nav-icon">▶</span> Run manuel</div>
+    <div class="nav-item" data-page="logs"><span class="nav-icon">≡</span> Logs</div>
+    <div class="nav-section" style="margin-top:16px">Config</div>
+    <div class="nav-item" data-page="schedule"><span class="nav-icon">◷</span> Planification</div>
+    <div class="nav-item" data-page="notifications"><span class="nav-icon">◎</span> Notifications</div>
+    <div class="nav-spacer"></div>
+    <button class="run-btn" id="sidebar-run-btn" onclick="quickRun()">▶ RUN TOUS</button>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-title">Dashboard</div>
+      <div class="page-sub" id="dash-updated">Chargement…</div>
+
+      <div class="dash-stats">
+        <div class="stat-box"><div class="stat-val green" id="stat-ok">–</div><div class="stat-label">OK</div></div>
+        <div class="stat-box"><div class="stat-val red"   id="stat-err">–</div><div class="stat-label">Échecs</div></div>
+        <div class="stat-box"><div class="stat-val yellow" id="stat-mp">–</div><div class="stat-label">Alertes MP</div></div>
+        <div class="stat-box"><div class="stat-val"       id="stat-dis">–</div><div class="stat-label">Désactivés</div></div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+        <button class="btn btn-ghost" style="font-size:12px" onclick="openDrawer()">+ Ajouter un site</button>
+      </div>
+      <div class="dash-grid" id="dash-grid">
+        <div class="empty-state" style="grid-column:1/-1">
+          <div class="big">◈</div>
+          Aucune donnée — lancez un run avec <code>--json-output</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- SITES -->
+    <div class="page" id="page-sites">
+      <div class="page-title">Sites</div>
+      <div class="page-sub">Gérer les trackers configurés</div>
+      <button class="btn-add" onclick="openDrawer()">+ Ajouter un site</button>
+      <div class="card" style="padding:0; overflow:hidden;">
+        <table class="sites-table" id="sites-table">
+          <thead>
+            <tr>
+              <th>Actif</th>
+              <th>Nom</th>
+              <th>URL</th>
+              <th>Auth</th>
+              <th>2FA</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="sites-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RUN MANUEL -->
+    <div class="page" id="page-run">
+      <div class="page-title">Run manuel</div>
+      <div class="page-sub">Déclencher une visite maintenant</div>
+
+      <div class="run-panel">
+        <div class="card">
+          <div class="card-title">Ciblage</div>
+          <div class="run-site-select">
+            <select class="form-select" id="run-site-sel" style="flex:1">
+              <option value="">Tous les sites actifs</option>
+            </select>
+          </div>
+          <div class="card-title" style="margin-top:12px">Flags</div>
+          <div style="display:flex;flex-direction:column;gap:8px" id="run-flags">
+            <label style="display:flex;gap:8px;align-items:center;font-size:12px;cursor:pointer">
+              <input type="checkbox" id="flag-mp" checked> Notifier les messages privés
+            </label>
+            <label style="display:flex;gap:8px;align-items:center;font-size:12px;cursor:pointer">
+              <input type="checkbox" id="flag-error" checked> Notifier les échecs
+            </label>
+            <label style="display:flex;gap:8px;align-items:center;font-size:12px;cursor:pointer">
+              <input type="checkbox" id="flag-verbose"> Notifier tous les résultats
+            </label>
+            <label style="display:flex;gap:8px;align-items:center;font-size:12px;cursor:pointer">
+              <input type="checkbox" id="flag-silent"> Aucune notification
+            </label>
+            <label style="display:flex;gap:8px;align-items:center;font-size:12px;cursor:pointer">
+              <input type="checkbox" id="flag-stats" checked> Afficher les stats
+            </label>
+          </div>
+          <div style="margin-top:16px;display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="startRun()" id="run-start-btn">▶ Lancer</button>
+            <button class="btn btn-danger" onclick="stopRun()" id="run-stop-btn" style="display:none">■ Arrêter</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Commande générée</div>
+          <code id="run-cmd-preview" style="font-family:var(--mono);font-size:11px;color:var(--accent);word-break:break-all;"></code>
+        </div>
+      </div>
+
+      <div class="card-title">Sortie</div>
+      <div class="terminal" id="run-terminal"><span class="l-meta">En attente d'un run…</span></div>
+    </div>
+
+    <!-- LOGS -->
+    <div class="page" id="page-logs">
+      <div class="page-title">Logs</div>
+      <div class="page-sub">Historique des visites mensuelles</div>
+      <div class="log-controls">
+        <select class="form-select log-file-select" id="log-file-sel" onchange="loadLog()">
+          <option value="">Sélectionner un fichier…</option>
+        </select>
+        <button class="btn btn-ghost" onclick="loadLog()">↻ Rafraîchir</button>
+        <button class="btn btn-ghost" onclick="scrollLogBottom()">↓ Fin</button>
+      </div>
+      <div class="terminal" id="log-terminal" style="height:520px"><span class="l-meta">Sélectionnez un fichier de log.</span></div>
+    </div>
+
+    <!-- PLANIFICATION -->
+    <div class="page" id="page-schedule">
+      <div class="page-title">Planification</div>
+      <div class="page-sub">Cron interne — exécution automatique</div>
+      <div class="card">
+
+        <div class="form-section">
+          <div class="form-toggle-row">
+            <div>
+              <div class="form-toggle-label">Activer la planification</div>
+              <div class="form-toggle-sub">Le run sera déclenché automatiquement</div>
+            </div>
+            <div class="toggle-pill" id="sched-toggle" onclick="toggleSched()"></div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Fréquence</div>
+          <div class="form-group" style="margin-bottom:20px">
+            <label class="form-label">Mode</label>
+            <select class="form-select" id="sched-mode" onchange="updateSchedMode()">
+              <option value="hours">Toutes les X heures</option>
+              <option value="days">Tous les X jours à une heure fixe</option>
+              <option value="weekdays">Certains jours de la semaine à une heure fixe</option>
+            </select>
+          </div>
+
+          <!-- Mode : toutes les X heures -->
+          <div id="sched-row-hours" style="display:none">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="color:var(--text2);font-size:12px;font-family:var(--mono)">Toutes les</span>
+              <input type="number" class="form-input" id="sched-interval-h" min="1" max="23" value="6" oninput="updateSchedPreview()" style="max-width:80px">
+              <span style="color:var(--text2);font-size:12px;font-family:var(--mono)">heures</span>
+            </div>
+          </div>
+
+          <!-- Mode : tous les X jours -->
+          <div id="sched-row-days" style="display:none">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <span style="color:var(--text2);font-size:12px;font-family:var(--mono)">Tous les</span>
+              <input type="number" class="form-input" id="sched-interval-d" min="1" max="30" value="1" oninput="updateSchedPreview()" style="max-width:80px">
+              <span style="color:var(--text2);font-size:12px;font-family:var(--mono)">jours à</span>
+              <input type="number" class="form-input" id="sched-hour-d" min="0" max="23" value="3" oninput="this.value=Math.min(23,Math.max(0,this.value|0));updateSchedPreview()" style="max-width:75px" placeholder="hh">
+              <span style="color:var(--text2);font-size:12px;font-family:var(--mono)">h</span>
+              <span style="color:var(--text2);font-size:18px">:</span>
+              <input type="number" class="form-input" id="sched-min-d" min="0" max="59" value="0" oninput="this.value=Math.min(59,Math.max(0,this.value|0));updateSchedPreview()" style="max-width:75px" placeholder="mm">
+              <span style="color:var(--text2);font-size:12px;font-family:var(--mono)">mn</span>
+            </div>
+          </div>
+
+          <!-- Mode : jours de la semaine -->
+          <div id="sched-row-weekdays" style="display:none">
+            <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+              <label style="display:flex;gap:6px;align-items:center;font-size:12px;cursor:pointer;color:var(--text2)"><input type="checkbox" class="wd-cb" value="0"> Lun</label>
+              <label style="display:flex;gap:6px;align-items:center;font-size:12px;cursor:pointer;color:var(--text2)"><input type="checkbox" class="wd-cb" value="1"> Mar</label>
+              <label style="display:flex;gap:6px;align-items:center;font-size:12px;cursor:pointer;color:var(--text2)"><input type="checkbox" class="wd-cb" value="2"> Mer</label>
+              <label style="display:flex;gap:6px;align-items:center;font-size:12px;cursor:pointer;color:var(--text2)"><input type="checkbox" class="wd-cb" value="3"> Jeu</label>
+              <label style="display:flex;gap:6px;align-items:center;font-size:12px;cursor:pointer;color:var(--text2)"><input type="checkbox" class="wd-cb" value="4"> Ven</label>
+              <label style="display:flex;gap:6px;align-items:center;font-size:12px;cursor:pointer;color:var(--text2)"><input type="checkbox" class="wd-cb" value="5"> Sam</label>
+              <label style="display:flex;gap:6px;align-items:center;font-size:12px;cursor:pointer;color:var(--text2)"><input type="checkbox" class="wd-cb" value="6"> Dim</label>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <span style="color:var(--text2);font-size:12px;font-family:var(--mono)">À</span>
+              <input type="number" class="form-input" id="sched-hour-w" min="0" max="23" value="3" oninput="this.value=Math.min(23,Math.max(0,this.value|0));updateSchedPreview()" style="max-width:75px" placeholder="hh">
+              <span style="color:var(--text2);font-size:12px;font-family:var(--mono)">h</span>
+              <span style="color:var(--text2);font-size:18px">:</span>
+              <input type="number" class="form-input" id="sched-min-w" min="0" max="59" value="0" oninput="this.value=Math.min(59,Math.max(0,this.value|0));updateSchedPreview()" style="max-width:75px" placeholder="mm">
+              <span style="color:var(--text2);font-size:12px;font-family:var(--mono)">mn</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Flags</div>
+          <input type="text" class="form-input" id="sched-args" value="--mp --error --json-output" oninput="updateSchedPreview()">
+        </div>
+
+        <div class="notice info" id="sched-preview"></div>
+        <div style="margin-top:16px">
+          <button class="btn btn-primary" onclick="saveSched()">Enregistrer</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PUSHOVER -->
+    <div class="page" id="page-notifications">
+      <div class="page-title">Notifications</div>
+      <div class="page-sub">Configuration via Apprise</div>
+      <div class="card">
+        <div class="form-section">
+          <div class="form-section-title">Serveur Apprise</div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">URL du serveur Apprise</label>
+              <input type="text" class="form-input" id="notif-server" placeholder="http://192.168.1.20:8001">
+            </div>
+          </div>
+        </div>
+        <div class="form-section">
+          <div class="form-section-title">URLs de notification</div>
+          <div class="form-hint" style="margin-bottom:10px">Une URL par ligne — ex: pover://userkey@apitoken</div>
+          <textarea class="form-textarea" id="notif-urls" style="min-height:120px" placeholder="pover://userkey@apitoken&#10;tgram://bottoken/chatid"></textarea>
+        </div>
+        <div class="form-section">
+          <div class="form-section-title">Envoyer une notification</div>
+          <div class="form-toggle-row">
+            <div><div class="form-toggle-label">En cas d'erreur</div></div>
+            <input type="checkbox" id="notif-error" style="width:20px;height:20px;cursor:pointer">
+          </div>
+          <div class="form-toggle-row">
+            <div><div class="form-toggle-label">En cas de succès</div></div>
+            <input type="checkbox" id="notif-success" style="width:20px;height:20px;cursor:pointer">
+          </div>
+          <div class="form-toggle-row">
+            <div>
+              <div class="form-toggle-label">En cas de succès après échec</div>
+              <div class="form-toggle-sub">Notifie uniquement quand un site revient OK après avoir échoué</div>
+            </div>
+            <input type="checkbox" id="notif-saf" style="width:20px;height:20px;cursor:pointer">
+          </div>
+          <div class="form-toggle-row">
+            <div><div class="form-toggle-label">Inclure les stats</div><div class="form-toggle-sub">Ajoute les stats dans le corps de la notification</div></div>
+            <input type="checkbox" id="notif-stats" style="width:20px;height:20px;cursor:pointer">
+          </div>
+          <div class="form-toggle-row">
+            <div><div class="form-toggle-label">En cas de MP non lu</div></div>
+            <input type="checkbox" id="notif-mp" style="width:20px;height:20px;cursor:pointer">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:8px">
+          <button class="btn btn-primary" onclick="saveNotifications()">Enregistrer</button>
+          <button class="btn btn-ghost" onclick="testNotifications()">Tester</button>
+        </div>
+        <div id="notif-result" style="margin-top:12px"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Drawer : formulaire site -->
+<div class="overlay" id="drawer-overlay" onclick="closeDrawerIfBg(event)">
+  <div class="drawer">
+    <div class="drawer-header">
+      <div class="drawer-title" id="drawer-title">Nouveau site</div>
+      <button class="btn-icon" onclick="closeDrawer()">✕</button>
+    </div>
+    <div class="drawer-body">
+
+      <div class="form-section">
+        <div class="form-section-title">Identité</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nom <span class="opt">*</span></label>
+            <input type="text" class="form-input" id="f-name" placeholder="MonTracker">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Aliases <span class="opt">(séparés par virgule)</span></label>
+            <input type="text" class="form-input" id="f-aliases" placeholder="mt, mon tracker">
+          </div>
+        </div>
+        <div class="form-toggle-row">
+          <div>
+            <div class="form-toggle-label">Actif</div>
+          </div>
+          <div class="toggle-pill on" id="f-enabled-toggle" onclick="toggleFormPill('f-enabled-toggle','f-enabled')"></div>
+          <input type="hidden" id="f-enabled" value="true">
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">URLs</div>
+        <div class="form-row full">
+          <div class="form-group">
+            <label class="form-label">URL de login <span class="opt">*</span></label>
+            <input type="text" class="form-input" id="f-url" placeholder="https://monsite.com/login">
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="form-group">
+            <label class="form-label">POST URL <span class="opt">*</span></label>
+            <input type="text" class="form-input" id="f-post_url" placeholder="https://monsite.com/login">
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="form-group">
+            <label class="form-label">Verify URL <span class="opt">optionnel</span></label>
+            <input type="text" class="form-input" id="f-verify_url" placeholder="https://monsite.com/dashboard">
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="form-group">
+            <label class="form-label">Pre-visit URLs <span class="opt">(séparées par virgule)</span></label>
+            <input type="text" class="form-input" id="f-pre_visit_urls" placeholder="https://monsite.com/api/settings/public">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">Identifiants</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Username <span class="opt">*</span></label>
+            <input type="text" class="form-input" id="f-username" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password <span class="opt">*</span></label>
+            <input type="password" class="form-input" id="f-password" autocomplete="new-password">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Champ username</label>
+            <input type="text" class="form-input" id="f-username_field" placeholder="username">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Champ password</label>
+            <input type="text" class="form-input" id="f-password_field" placeholder="password">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">2FA / TOTP</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Secret TOTP <span class="opt">(base32)</span></label>
+            <input type="text" class="form-input" id="f-totp_secret" placeholder="JBSWY3DPEHPK3PXP">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Champ TOTP</label>
+            <input type="text" class="form-input" id="f-totp_field" placeholder="mfa">
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="form-group">
+            <label class="form-label">TOTP URL <span class="opt">(si étape séparée)</span></label>
+            <input type="text" class="form-input" id="f-totp_url" placeholder="https://monsite.com/api/auth/mfa/totp">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">Succès & Alertes</div>
+        <div class="form-row full">
+          <div class="form-group">
+            <label class="form-label">Mots-clés succès <span class="opt">(séparés par virgule)</span></label>
+            <input type="text" class="form-input" id="f-success_keywords" placeholder="Collages, Upload, Dashboard">
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="form-group">
+            <label class="form-label">Success URL contains <span class="opt">optionnel</span></label>
+            <input type="text" class="form-input" id="f-success_url_contains" placeholder="index.php">
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="form-group">
+            <label class="form-label">Alert keywords / MP <span class="opt">(séparés par virgule)</span></label>
+            <input type="text" class="form-input" id="f-alert_keywords" placeholder="message, notification">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">HTTP avancé</div>
+        <div class="form-row full">
+          <div class="form-group">
+            <label class="form-label">Extra fields <span class="opt">JSON</span></label>
+            <input type="text" class="form-input" id="f-extra_fields" placeholder='{"login": "Log in"}'>
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="form-group">
+            <label class="form-label">Extra headers <span class="opt">JSON</span></label>
+            <input type="text" class="form-input" id="f-extra_headers" placeholder='{"X-Requested-With": "XMLHttpRequest"}'>
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="form-group">
+            <label class="form-label">CSRF field <span class="opt">optionnel</span></label>
+            <input type="text" class="form-input" id="f-csrf_field" placeholder="_token">
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="form-group">
+            <label class="form-label">Success JSON field <span class="opt">ex: token</span></label>
+            <input type="text" class="form-input" id="f-success_json_field" placeholder="token">
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="form-group">
+            <label class="form-label">Stats <span class="opt">JSON — patterns regex HTML</span></label>
+            <textarea class="form-textarea" id="f-stats" placeholder='{"upload":"class=\"up\"[^>]*>([^<]+)","ratio":"class=\"ratio\"[^>]*>([^<]+)"}'></textarea>
+            <div class="form-hint">Clés libres, valeurs = pattern regex. Utilisé avec --stats.</div>
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="form-group">
+            <label class="form-label">Stats JSON <span class="opt">JSON — chemins dans une réponse API</span></label>
+            <textarea class="form-textarea" id="f-stats_json" placeholder='{"upload":"data.stats.uploaded","ratio":"data.stats.ratio"}'></textarea>
+            <div class="form-hint">Clés libres, valeurs = chemin pointé dans le JSON retourné.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">Options</div>
+        <div class="form-toggle-row">
+          <div>
+            <div class="form-toggle-label">API JSON</div>
+            <div class="form-toggle-sub">Login via API REST (pas de form HTML)</div>
+          </div>
+          <div class="toggle-pill" id="f-api_json-toggle" onclick="toggleFormPill('f-api_json-toggle','f-api_json')"></div>
+          <input type="hidden" id="f-api_json" value="false">
+        </div>
+        <div class="form-toggle-row">
+          <div>
+            <div class="form-toggle-label">curl_cffi (Cloudflare)</div>
+            <div class="form-toggle-sub">Impersonne Firefox pour contourner Cloudflare</div>
+          </div>
+          <div class="toggle-pill" id="f-use_curl_cffi-toggle" onclick="toggleFormPill('f-use_curl_cffi-toggle','f-use_curl_cffi')"></div>
+          <input type="hidden" id="f-use_curl_cffi" value="false">
+        </div>
+        <div class="form-toggle-row">
+          <div>
+            <div class="form-toggle-label">Playwright</div>
+            <div class="form-toggle-sub">Navigateur headless Firefox complet</div>
+          </div>
+          <div class="toggle-pill" id="f-use_playwright-toggle" onclick="toggleFormPill('f-use_playwright-toggle','f-use_playwright')"></div>
+          <input type="hidden" id="f-use_playwright" value="false">
+        </div>
+        <div class="form-toggle-row">
+          <div>
+            <div class="form-toggle-label">Extract hidden fields</div>
+            <div class="form-toggle-sub">Auto-extraction des champs cachés du formulaire</div>
+          </div>
+          <div class="toggle-pill" id="f-extract_hidden_fields-toggle" onclick="toggleFormPill('f-extract_hidden_fields-toggle','f-extract_hidden_fields')"></div>
+          <input type="hidden" id="f-extract_hidden_fields" value="false">
+        </div>
+        <div class="form-toggle-row">
+          <div>
+            <div class="form-toggle-label">Playwright fetch verify</div>
+            <div class="form-toggle-sub">Récupère la verify_url via Playwright après login</div>
+          </div>
+          <div class="toggle-pill" id="f-playwright_fetch_verify-toggle" onclick="toggleFormPill('f-playwright_fetch_verify-toggle','f-playwright_fetch_verify')"></div>
+          <input type="hidden" id="f-playwright_fetch_verify" value="false">
+        </div>
+        <div class="form-row full" style="margin-top:12px">
+          <div class="form-group">
+            <label class="form-label">Playwright submit <span class="opt">sélecteur CSS du bouton</span></label>
+            <input type="text" class="form-input" id="f-playwright_submit" placeholder="button[type=submit]">
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="drawer-footer">
+      <button class="btn btn-danger" id="drawer-delete-btn" style="display:none;margin-right:auto" onclick="deleteSite()">Supprimer</button>
+      <button class="btn btn-ghost" onclick="closeDrawer()">Annuler</button>
+      <button class="btn btn-primary" onclick="saveSite()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let currentPage = 'dashboard';
+let editingIdx  = null;
+let sitesData   = [];
+let runSSE      = null;
+let schedEnabled = false;
+
+// ─── Navigation ──────────────────────────────────────────────────────────────
+function navigateTo(page, pushState = true) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page)?.classList.add('active');
+  currentPage = page;
+  if (pushState) history.pushState({page}, '', '/' + page);
+  if (page === 'dashboard') loadDashboard();
+  if (page === 'sites')     loadSites();
+  if (page === 'logs')      loadLogsList();
+  if (page === 'schedule')  loadSchedule();
+  if (page === 'notifications') loadNotifications();
+  if (page === 'run')       refreshRunSiteSelect();
+}
+
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', () => navigateTo(el.dataset.page));
+});
+
+window.addEventListener('popstate', (e) => {
+  const page = e.state?.page || 'dashboard';
+  navigateTo(page, false);
+});
+
+// ─── Dashboard ───────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  const [statusRes, cfgRes] = await Promise.all([
+    fetch('/api/status'), fetch('/api/sites')
+  ]);
+  const status = await statusRes.json();
+  const cfg    = await cfgRes.json();
+  sitesData    = cfg.sites || [];
+
+  const updated = status.updated
+    ? 'Dernière mise à jour : ' + status.updated
+    : 'Aucune donnée — lancez un run avec --json-output';
+  document.getElementById('dash-updated').textContent = updated;
+
+  const statusMap = {};
+  (status.sites || []).forEach(s => { statusMap[s.name] = s; });
+
+  let cntOk=0, cntErr=0, cntMp=0, cntDis=0;
+  sitesData.forEach(s => { if (!s.enabled && s.enabled !== undefined) cntDis++; });
+
+  const grid = document.getElementById('dash-grid');
+  if (!sitesData.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="big">◈</div>Aucun site configuré</div>';
+    return;
+  }
+
+  grid.innerHTML = '';
+  sitesData.forEach((site, idx) => {
+    const enabled = site.enabled !== false;
+    const st      = statusMap[site.name];
+    let cls = 'disabled', statusTxt = 'Non exécuté';
+    if (enabled && st) {
+      if (st.disabled) { cls = 'disabled'; statusTxt = 'Désactivé'; }
+      else if (st.ok === true  && !st.alert) { cls = 'ok';  statusTxt = 'OK'; cntOk++; }
+      else if (st.ok === true  &&  st.alert) { cls = 'warn'; statusTxt = 'OK'; cntMp++; }
+      else if (st.ok === false) { cls = 'err'; statusTxt = 'ÉCHEC'; cntErr++; }
+    } else if (!enabled) { cntDis++; }
+
+    const tags = [];
+    if (site.totp_secret) tags.push('<span class="tag totp">TOTP</span>');
+    if (site.use_curl_cffi) tags.push('<span class="tag curl">CURL</span>');
+    if (site.use_playwright) tags.push('<span class="tag pw">PW</span>');
+    if (site.api_json)  tags.push('<span class="tag">JSON</span>');
+
+    const statsHtml = st?.stats
+      ? '<div class="site-stats">' + st.stats.split(' | ').map(s => s).join('<br>') + '</div>'
+      : '';
+    const alertHtml = st?.alert
+      ? '<div class="site-alert">✉ ' + st.alert + '</div>'
+      : '';
+    const lastSeenHtml = (st && st.last_seen)
+      ? '<div class="site-last-seen">⏱ ' + st.last_seen + '</div>'
+      : '';
+
+    // Indicateurs fonctions
+    const features = [];
+    if (site.stats || site.stats_json) features.push('<span class="feature-badge stats">📊 Stats</span>');
+    if (site.alert_keywords && site.alert_keywords.length) features.push('<span class="feature-badge mp">✉ MP</span>');
+    const featuresHtml = features.length ? '<div class="site-features">' + features.join('') + '</div>' : '';
+
+    const domain = (site.url || '').replace(/^https?:\/\//, '').split('/')[0];
+    grid.innerHTML += `
+      <div class="site-card ${cls}${enabled ? '' : ' disabled'}">
+        <div class="site-card-header">
+          <button class="site-card-toggle" onclick="toggleSite(${idx})" title="${enabled ? 'Désactiver' : 'Activer'}">
+            <div class="site-badge"></div>
+          </button>
+          <div class="site-name">${site.name}</div>
+        </div>
+        <div class="site-url">${domain}</div>
+        <div class="site-status-text">${statusTxt}</div>
+        ${alertHtml}${statsHtml}${lastSeenHtml}
+        <div class="site-tags">${tags.join('')}</div>
+        ${featuresHtml}
+        <div class="site-card-actions">
+          <button class="site-card-action" onclick="openDrawer(${idx})">✎ Éditer</button>
+          <button class="site-card-action" onclick="runSingle('${site.name}')">▶ Lancer</button>
+          <button class="site-card-action" onclick="toggleSite(${idx})" title="${enabled ? 'Désactiver' : 'Activer'}">${enabled ? '⏸' : '▶'}</button>
+          <button class="site-card-action danger" onclick="confirmDelete(${idx})">✕</button>
+        </div>
+      </div>`;
+  });
+
+  // Déduplique les compteurs (disabled était compté en boucle)
+  cntDis = sitesData.filter(s => s.enabled === false).length;
+  document.getElementById('stat-ok').textContent  = cntOk;
+  document.getElementById('stat-err').textContent = cntErr;
+  document.getElementById('stat-mp').textContent  = cntMp;
+  document.getElementById('stat-dis').textContent = cntDis;
+}
+
+function editSiteFromDash(idx) {
+  openDrawer(idx);
+}
+
+// ─── Sites ────────────────────────────────────────────────────────────────────
+async function loadSites() {
+  const res  = await fetch('/api/sites');
+  const cfg  = await res.json();
+  sitesData  = cfg.sites || [];
+  const tbody = document.getElementById('sites-tbody');
+  tbody.innerHTML = '';
+  if (!sitesData.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Aucun site — cliquez sur Ajouter</td></tr>';
+    return;
+  }
+  sitesData.forEach((s, i) => {
+    const enabled  = s.enabled !== false;
+    const auth     = s.api_json ? 'JSON' : 'Form';
+    const twofa    = s.totp_url ? 'Page' : s.totp_secret ? 'Inline' : '—';
+    tbody.innerHTML += `<tr>
+      <td><div class="toggle-pill ${enabled ? 'on' : ''}" onclick="toggleSite(${i})" title="${enabled ? 'Désactiver' : 'Activer'}"></div></td>
+      <td class="mono" style="font-weight:600;color:var(--text)">${s.name}</td>
+      <td class="mono" style="color:var(--text2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(s.url||'').replace(/^https?:\/\//,'')}</td>
+      <td><span class="tag">${auth}</span></td>
+      <td><span class="tag ${s.totp_secret ? 'totp' : ''}">${twofa}</span></td>
+      <td>
+        <div class="tbl-actions">
+          <button class="btn-icon" onclick="openDrawer(${i})" title="Éditer">✎</button>
+          <button class="btn-icon" onclick="runSingle('${s.name}')" title="Lancer">▶</button>
+          <button class="btn-icon danger" onclick="confirmDelete(${i})" title="Supprimer">✕</button>
+        </div>
+      </td>
+    </tr>`;
+  });
+}
+
+async function toggleSite(idx) {
+  await fetch('/api/sites/' + idx + '/toggle', {method:'POST'});
+  await loadDashboard();
+  if (currentPage === 'sites') loadSites();
+}
+
+async function confirmDelete(idx) {
+  const name = sitesData[idx]?.name || 'ce site';
+  if (!confirm('Supprimer "' + name + '" ?')) return;
+  await fetch('/api/sites/' + idx, {method:'DELETE'});
+  await loadDashboard();
+  if (currentPage === 'sites') loadSites();
+}
+
+// ─── Drawer ───────────────────────────────────────────────────────────────────
+const BOOL_FIELDS = ['api_json','use_curl_cffi','use_playwright','extract_hidden_fields','playwright_fetch_verify'];
+const STR_FIELDS  = ['name','aliases','url','post_url','verify_url','pre_visit_urls',
+                     'username','password','username_field','password_field',
+                     'totp_secret','totp_field','totp_url',
+                     'success_keywords','success_url_contains','alert_keywords',
+                     'extra_fields','extra_headers','csrf_field','success_json_field',
+                     'stats','stats_json','playwright_submit'];
+
+function openDrawer(idx) {
+  editingIdx = (idx !== undefined) ? idx : null;
+  document.getElementById('drawer-title').textContent = editingIdx !== null ? 'Modifier site' : 'Nouveau site';
+  document.getElementById('drawer-delete-btn').style.display = editingIdx !== null ? 'inline-flex' : 'none';
+
+  // Reset
+  STR_FIELDS.forEach(f => {
+    const el = document.getElementById('f-' + f);
+    if (el) el.value = '';
+  });
+  ['f-enabled','f-api_json','f-use_curl_cffi','f-use_playwright','f-extract_hidden_fields','f-playwright_fetch_verify'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = (id === 'f-enabled') ? 'true' : 'false';
+  });
+  setPill('f-enabled-toggle', true);
+  BOOL_FIELDS.forEach(f => setPill('f-' + f + '-toggle', false));
+
+  if (editingIdx !== null) {
+    const s = sitesData[editingIdx];
+    STR_FIELDS.forEach(f => {
+      const el = document.getElementById('f-' + f);
+      if (!el) return;
+      const val = s[f];
+      if (val === undefined || val === null) return;
+      if (Array.isArray(val)) el.value = val.join(', ');
+      else if (typeof val === 'object') el.value = JSON.stringify(val);
+      else el.value = val;
+    });
+    const enabled = s.enabled !== false;
+    document.getElementById('f-enabled').value = String(enabled);
+    setPill('f-enabled-toggle', enabled);
+    BOOL_FIELDS.forEach(f => {
+      const v = !!s[f];
+      document.getElementById('f-' + f).value = String(v);
+      setPill('f-' + f + '-toggle', v);
+    });
+  }
+
+  document.getElementById('drawer-overlay').classList.add('open');
+}
+
+function closeDrawer() {
+  document.getElementById('drawer-overlay').classList.remove('open');
+}
+function closeDrawerIfBg(e) {
+  if (e.target === document.getElementById('drawer-overlay')) closeDrawer();
+}
+
+function setPill(pillId, on) {
+  const el = document.getElementById(pillId);
+  if (!el) return;
+  if (on) el.classList.add('on'); else el.classList.remove('on');
+}
+
+function toggleFormPill(pillId, hiddenId) {
+  const hidden = document.getElementById(hiddenId);
+  const current = hidden.value === 'true';
+  hidden.value = String(!current);
+  setPill(pillId, !current);
+}
+
+function getFormSite() {
+  const site = {};
+  STR_FIELDS.forEach(f => {
+    const el = document.getElementById('f-' + f);
+    if (!el || el.value.trim() === '') return;
+    const v = el.value.trim();
+    // Listes
+    if (['aliases','success_keywords','alert_keywords','pre_visit_urls'].includes(f)) {
+      site[f] = v.split(',').map(x => x.trim()).filter(Boolean);
+    }
+    // JSON objects
+    else if (['extra_fields','extra_headers','stats','stats_json'].includes(f)) {
+      try { site[f] = JSON.parse(v); } catch { site[f] = v; }
+    }
+    else { site[f] = v; }
+  });
+  site.enabled = document.getElementById('f-enabled').value === 'true';
+  BOOL_FIELDS.forEach(f => {
+    site[f] = document.getElementById('f-' + f).value === 'true';
+  });
+  // Supprimer les false par défaut pour garder le JSON propre
+  BOOL_FIELDS.forEach(f => { if (!site[f]) delete site[f]; });
+  return site;
+}
+
+async function saveSite() {
+  const site = getFormSite();
+  if (!site.name || !site.url || !site.post_url) {
+    alert('Nom, URL de login et POST URL sont obligatoires.');
+    return;
+  }
+  let res;
+  if (editingIdx !== null) {
+    res = await fetch('/api/sites/' + editingIdx, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(site)
+    });
+  } else {
+    res = await fetch('/api/sites', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(site)
+    });
+  }
+  const data = await res.json();
+  if (data.ok) {
+    closeDrawer();
+    loadSites();
+    if (currentPage === 'dashboard') loadDashboard();
+  }
+}
+
+async function deleteSite() {
+  if (editingIdx === null) return;
+  const name = sitesData[editingIdx]?.name || 'ce site';
+  if (!confirm('Supprimer "' + name + '" définitivement ?')) return;
+  await fetch('/api/sites/' + editingIdx, {method:'DELETE'});
+  closeDrawer();
+  loadSites();
+}
+
+// ─── Run manuel ───────────────────────────────────────────────────────────────
+async function refreshRunSiteSelect() {
+  const res = await fetch('/api/sites');
+  const cfg = await res.json();
+  const sel = document.getElementById('run-site-sel');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Tous les sites actifs</option>';
+  (cfg.sites||[]).forEach(s => {
+    if (s.enabled !== false) {
+      sel.innerHTML += `<option value="${s.name}" ${cur===s.name?'selected':''}>${s.name}</option>`;
+    }
+  });
+  updateRunPreview();
+}
+
+function buildFlags() {
+  const flags = [];
+  if (document.getElementById('flag-mp').checked)      flags.push('--mp');
+  if (document.getElementById('flag-error').checked)   flags.push('--error');
+  if (document.getElementById('flag-verbose').checked) flags.push('--verbose');
+  if (document.getElementById('flag-silent').checked)  flags.push('--silent');
+  if (document.getElementById('flag-stats').checked)   flags.push('--stats');
+  flags.push('--json-output');
+  return flags.join(' ');
+}
+
+function updateRunPreview() {
+  const site   = document.getElementById('run-site-sel').value;
+  const flags  = buildFlags();
+  const siteArg = site ? ' --site ' + site : '';
+  document.getElementById('run-cmd-preview').textContent =
+    'python3 autovisit.py' + siteArg + ' ' + flags;
+}
+
+document.querySelectorAll('#run-flags input, #run-site-sel').forEach(el => {
+  el.addEventListener('change', updateRunPreview);
+});
+
+async function startRun() {
+  const site  = document.getElementById('run-site-sel').value;
+  const flags = buildFlags();
+  const term  = document.getElementById('run-terminal');
+  term.innerHTML = '';
+
+  const res = await fetch('/api/run', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({site: site || null, flags})
+  });
+  if (!res.ok) {
+    const d = await res.json();
+    term.innerHTML = '<span class="l-err">' + (d.error || 'Erreur') + '</span>';
+    return;
+  }
+
+  document.getElementById('run-start-btn').style.display = 'none';
+  document.getElementById('run-stop-btn').style.display  = 'inline-flex';
+  setRunIndicator(true);
+
+  if (runSSE) runSSE.close();
+  runSSE = new EventSource('/api/run/stream');
+  runSSE.onmessage = e => {
+    if (e.data === '__DONE__') {
+      runSSE.close(); runSSE = null;
+      document.getElementById('run-start-btn').style.display = 'inline-flex';
+      document.getElementById('run-stop-btn').style.display  = 'none';
+      setRunIndicator(false);
+      if (currentPage === 'dashboard') loadDashboard();
+      return;
+    }
+    if (e.data === '__PING__') return;
+    const line = document.createElement('div');
+    line.className = classifyLine(e.data);
+    line.textContent = e.data;
+    term.appendChild(line);
+    term.scrollTop = term.scrollHeight;
+  };
+}
+
+async function stopRun() {
+  await fetch('/api/run/stop', {method:'POST'});
+}
+
+async function quickRun() {
+  const btn = document.getElementById('sidebar-run-btn');
+  if (btn.classList.contains('running')) { stopRun(); return; }
+  navigateTo('run');
+  setTimeout(startRun, 200);
+}
+
+async function runSingle(name) {
+  navigateTo('run');
+  setTimeout(async () => {
+    const sel = document.getElementById('run-site-sel');
+    sel.value = name;
+    updateRunPreview();
+    startRun();
+  }, 200);
+}
+
+function classifyLine(line) {
+  const l = line.toLowerCase();
+  if (l.includes('echec') || l.includes('error') || l.includes('erreur')) return 'l-err';
+  if (l.includes(' ok ') || l.includes('reussi') || l.includes('succes')) return 'l-ok';
+  if (l.includes('warning') || l.includes('alerte') || l.includes('mp non lu')) return 'l-warn';
+  if (l.includes('===') || l.includes('demarrage') || l.includes('resume')) return 'l-meta';
+  return 'l-info';
+}
+
+function setRunIndicator(running) {
+  const ind = document.getElementById('run-indicator');
+  const txt = document.getElementById('run-status-text');
+  const btn = document.getElementById('sidebar-run-btn');
+  if (running) {
+    ind.classList.add('running');
+    txt.textContent = 'running…';
+    btn.classList.add('running');
+    btn.textContent = '■ STOP';
+  } else {
+    ind.classList.remove('running');
+    txt.textContent = 'idle';
+    btn.classList.remove('running');
+    btn.textContent = '▶ RUN TOUS';
+  }
+}
+
+// ─── Logs ─────────────────────────────────────────────────────────────────────
+async function loadLogsList() {
+  const res   = await fetch('/api/logs');
+  const files = await res.json();
+  const sel   = document.getElementById('log-file-sel');
+  const cur   = sel.value;
+  sel.innerHTML = '<option value="">Sélectionner un fichier…</option>';
+  files.forEach(f => {
+    sel.innerHTML += `<option value="${f}" ${f===cur?'selected':''}>${f}</option>`;
+  });
+  if (!cur && files.length) { sel.value = files[0]; loadLog(); }
+  else if (cur) loadLog();
+}
+
+async function loadLog() {
+  const file = document.getElementById('log-file-sel').value;
+  if (!file) return;
+  const term = document.getElementById('log-terminal');
+  term.innerHTML = '<span class="l-meta">Chargement…</span>';
+  const res  = await fetch('/api/logs/' + file + '?limit=500');
+  const data = await res.json();
+  term.innerHTML = '';
+  (data.lines || []).forEach(line => {
+    const d = document.createElement('div');
+    d.className = classifyLine(line);
+    d.textContent = line;
+    term.appendChild(d);
+  });
+  term.scrollTop = term.scrollHeight;
+}
+
+function scrollLogBottom() {
+  document.getElementById('log-terminal').scrollTop = 9999999;
+}
+
+// ─── Schedule ─────────────────────────────────────────────────────────────────
+function updateSchedMode() {
+  const mode = document.getElementById('sched-mode').value;
+  document.getElementById('sched-row-hours').style.display    = mode === 'hours'    ? '' : 'none';
+  document.getElementById('sched-row-days').style.display     = mode === 'days'     ? '' : 'none';
+  document.getElementById('sched-row-weekdays').style.display = mode === 'weekdays' ? '' : 'none';
+  updateSchedPreview();
+}
+
+async function loadSchedule() {
+  const res  = await fetch('/api/schedule');
+  const data = await res.json();
+  schedEnabled = !!data.enabled;
+  document.getElementById('sched-mode').value          = data.mode        ?? 'days';
+  document.getElementById('sched-interval-h').value    = data.interval_h  ?? 6;
+  document.getElementById('sched-interval-d').value    = data.interval_d  ?? 1;
+  document.getElementById('sched-hour-d').value        = data.hour_d      ?? 3;
+  document.getElementById('sched-min-d').value         = data.minute_d    ?? 0;
+  document.getElementById('sched-hour-w').value        = data.hour_w      ?? 3;
+  document.getElementById('sched-min-w').value         = data.minute_w    ?? 0;
+  document.getElementById('sched-args').value          = data.args        ?? '--mp --error --json-output';
+  const days = data.weekdays || [];
+  document.querySelectorAll('.wd-cb').forEach(cb => {
+    cb.checked = days.includes(parseInt(cb.value));
+  });
+  setPill('sched-toggle', schedEnabled);
+  updateSchedMode();
+}
+
+function toggleSched() {
+  schedEnabled = !schedEnabled;
+  setPill('sched-toggle', schedEnabled);
+  updateSchedPreview();
+}
+
+function updateSchedPreview() {
+  const mode  = document.getElementById('sched-mode').value;
+  const args  = document.getElementById('sched-args').value;
+  const state = schedEnabled ? 'ACTIVÉ' : 'DÉSACTIVÉ';
+  const JOURS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  let desc = '';
+  if (mode === 'hours') {
+    const n = document.getElementById('sched-interval-h').value;
+    desc = `toutes les ${n} heure(s)`;
+  } else if (mode === 'days') {
+    const n = document.getElementById('sched-interval-d').value;
+    const h = String(document.getElementById('sched-hour-d').value).padStart(2,'0');
+    const m = String(document.getElementById('sched-min-d').value).padStart(2,'0');
+    desc = `tous les ${n} jour(s) à ${h}:${m}`;
+  } else {
+    const checked = [...document.querySelectorAll('.wd-cb:checked')].map(cb => JOURS[cb.value]);
+    const h = String(document.getElementById('sched-hour-w').value).padStart(2,'0');
+    const m = String(document.getElementById('sched-min-w').value).padStart(2,'0');
+    desc = checked.length ? `${checked.join(', ')} à ${h}:${m}` : 'aucun jour sélectionné';
+  }
+  document.getElementById('sched-preview').textContent =
+    `[${state}] Exécution ${desc} — python3 autovisit.py ${args}`;
+}
+
+document.querySelectorAll('.wd-cb').forEach(cb => cb.addEventListener('change', updateSchedPreview));
+
+async function saveSched() {
+  const mode = document.getElementById('sched-mode').value;
+  const days = [...document.querySelectorAll('.wd-cb:checked')].map(cb => parseInt(cb.value));
+  const data = {
+    enabled:    schedEnabled,
+    mode,
+    interval_h: parseInt(document.getElementById('sched-interval-h').value),
+    interval_d: parseInt(document.getElementById('sched-interval-d').value),
+    hour_d:     parseInt(document.getElementById('sched-hour-d').value),
+    minute_d:   parseInt(document.getElementById('sched-min-d').value),
+    hour_w:     parseInt(document.getElementById('sched-hour-w').value),
+    minute_w:   parseInt(document.getElementById('sched-min-w').value),
+    weekdays:   days,
+    args:       document.getElementById('sched-args').value,
+  };
+  await fetch('/api/schedule', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(data)
+  });
+  showNotice('sched-preview', 'Planification enregistrée ✓', 'ok');
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+async function loadNotifications() {
+  const res  = await fetch('/api/notifications');
+  const data = await res.json();
+  document.getElementById('notif-server').value = data.apprise_url || '';
+  document.getElementById('notif-urls').value   = (data.urls || []).join('\n');
+  document.getElementById('notif-error').checked   = data.notify_error !== false;
+  document.getElementById('notif-success').checked = !!data.notify_success;
+  document.getElementById('notif-saf').checked     = data.notify_success_after_failure !== false;
+  document.getElementById('notif-stats').checked   = !!data.notify_stats;
+  document.getElementById('notif-mp').checked      = data.notify_mp !== false;
+}
+
+async function saveNotifications() {
+  const urls = document.getElementById('notif-urls').value
+    .split('\n').map(u => u.trim()).filter(Boolean);
+  await fetch('/api/notifications', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      apprise_url:                   document.getElementById('notif-server').value.trim(),
+      urls,
+      notify_error:                  document.getElementById('notif-error').checked,
+      notify_success:                document.getElementById('notif-success').checked,
+      notify_success_after_failure:  document.getElementById('notif-saf').checked,
+      notify_stats:                  document.getElementById('notif-stats').checked,
+      notify_mp:                     document.getElementById('notif-mp').checked,
+    })
+  });
+  const el = document.getElementById('notif-result');
+  el.textContent = 'Enregistré ✓';
+  el.className = 'notice ok';
+  setTimeout(() => { el.textContent = ''; el.className = ''; }, 2500);
+}
+
+async function testNotifications() {
+  const el = document.getElementById('notif-result');
+  el.textContent = 'Envoi en cours…';
+  el.className = 'notice info';
+  const res  = await fetch('/api/notifications/test', {method:'POST'});
+  const data = await res.json();
+  el.textContent = data.ok ? 'Notification envoyée ✓' : 'Erreur : ' + data.error;
+  el.className   = data.ok ? 'notice ok' : 'notice err';
+  setTimeout(() => { el.textContent = ''; el.className = ''; }, 3000);
+}
+
+// ─── Utils ────────────────────────────────────────────────────────────────────
+function showNotice(elId, msg, type) {
+  const el = document.getElementById(elId);
+  const orig = el.textContent;
+  el.textContent = msg;
+  el.className = 'notice ' + type;
+  setTimeout(() => { el.textContent = orig; el.className = 'notice info'; }, 2500);
+}
+
+// ─── Polling indicateur running ───────────────────────────────────────────────
+async function pollRunning() {
+  const res  = await fetch('/api/running');
+  const data = await res.json();
+  if (!runSSE) setRunIndicator(data.running);
+}
+setInterval(pollRunning, 5000);
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+const initPage = location.pathname.replace('/', '').replace('/', '') || 'dashboard';
+navigateTo(initPage, false);
+updateRunPreview();
+updateSchedPreview();
+</script>
+</body>
+</html>
