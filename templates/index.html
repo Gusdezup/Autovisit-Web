@@ -676,13 +676,13 @@ body {
   <nav class="sidebar">
     <div class="nav-section">Navigation</div>
     <div class="nav-item active" data-page="dashboard"><span class="nav-icon">◈</span> Dashboard</div>
-    <div class="nav-item" data-page="run"><span class="nav-icon">▶</span> Run manuel</div>
+    <div class="nav-item" data-page="run"><span class="nav-icon">▶</span> Visite manuelle</div>
     <div class="nav-item" data-page="logs"><span class="nav-icon">≡</span> Logs</div>
     <div class="nav-section" style="margin-top:16px">Config</div>
     <div class="nav-item" data-page="schedule"><span class="nav-icon">◷</span> Planification</div>
     <div class="nav-item" data-page="notifications"><span class="nav-icon">◎</span> Notifications</div>
     <div class="nav-spacer"></div>
-    <button class="run-btn" id="sidebar-run-btn" onclick="quickRun()">▶ RUN TOUS</button>
+    <button class="run-btn" id="sidebar-run-btn" onclick="quickRun()">▶ Tout visiter</button>
   </nav>
 
   <!-- Main -->
@@ -733,9 +733,9 @@ body {
       </div>
     </div>
 
-    <!-- RUN MANUEL -->
+    <!-- VISITE MANUELLE -->
     <div class="page" id="page-run">
-      <div class="page-title">Run manuel</div>
+      <div class="page-title">Visite manuelle</div>
       <div class="page-sub">Déclencher une visite maintenant</div>
 
       <div class="run-panel">
@@ -768,10 +768,6 @@ body {
             <button class="btn btn-primary" onclick="startRun()" id="run-start-btn">▶ Lancer</button>
             <button class="btn btn-danger" onclick="stopRun()" id="run-stop-btn" style="display:none">■ Arrêter</button>
           </div>
-        </div>
-        <div class="card">
-          <div class="card-title">Commande générée</div>
-          <code id="run-cmd-preview" style="font-family:var(--mono);font-size:11px;color:var(--accent);word-break:break-all;"></code>
         </div>
       </div>
 
@@ -1464,7 +1460,7 @@ async function deleteSite() {
   loadSites();
 }
 
-// ─── Run manuel ───────────────────────────────────────────────────────────────
+// ─── Visite manuelle ──────────────────────────────────────────────────────────
 async function refreshRunSiteSelect() {
   const res = await fetch('/api/sites');
   const cfg = await res.json();
@@ -1476,7 +1472,6 @@ async function refreshRunSiteSelect() {
       sel.innerHTML += `<option value="${s.name}" ${cur===s.name?'selected':''}>${s.name}</option>`;
     }
   });
-  updateRunPreview();
 }
 
 function buildFlags() {
@@ -1490,17 +1485,7 @@ function buildFlags() {
   return flags.join(' ');
 }
 
-function updateRunPreview() {
-  const site   = document.getElementById('run-site-sel').value;
-  const flags  = buildFlags();
-  const siteArg = site ? ' --site ' + site : '';
-  document.getElementById('run-cmd-preview').textContent =
-    'python3 autovisit.py' + siteArg + ' ' + flags;
-}
 
-document.querySelectorAll('#run-flags input, #run-site-sel').forEach(el => {
-  el.addEventListener('change', updateRunPreview);
-});
 
 async function startRun() {
   const site  = document.getElementById('run-site-sel').value;
@@ -1559,7 +1544,6 @@ async function runSingle(name) {
   setTimeout(async () => {
     const sel = document.getElementById('run-site-sel');
     sel.value = name;
-    updateRunPreview();
     startRun();
   }, 200);
 }
@@ -1586,7 +1570,7 @@ function setRunIndicator(running) {
     ind.classList.remove('running');
     txt.textContent = 'idle';
     btn.classList.remove('running');
-    btn.textContent = '▶ RUN TOUS';
+    btn.textContent = '▶ Tout visiter';
   }
 }
 
@@ -1775,7 +1759,6 @@ setInterval(pollRunning, 5000);
 // ─── Init ─────────────────────────────────────────────────────────────────────
 const initPage = location.pathname.replace('/', '').replace('/', '') || 'dashboard';
 navigateTo(initPage, false);
-updateRunPreview();
 updateSchedPreview();
 </script>
 </body>
