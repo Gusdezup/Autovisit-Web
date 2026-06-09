@@ -629,7 +629,67 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
 
-/* Stats bar on dashboard */
+/* ── Modal bibliothèque ── */
+.lib-modal-overlay {
+  position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;
+  display:none;align-items:center;justify-content:center;padding:20px;
+}
+.lib-modal-overlay.open { display:flex; }
+.lib-modal {
+  background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+  width:100%;max-width:680px;max-height:90vh;display:flex;flex-direction:column;
+}
+.lib-modal-header {
+  padding:20px 24px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.lib-modal-title { font-family:var(--mono);font-size:13px;color:var(--text); }
+.lib-modal-body { padding:16px 24px;overflow-y:auto;flex:1; }
+.lib-grid {
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;
+}
+.lib-card {
+  background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+  padding:12px;cursor:pointer;transition:border-color .15s;
+  display:flex;flex-direction:column;gap:4px;
+}
+.lib-card:hover { border-color:var(--accent); }
+.lib-card-name { font-size:12px;font-weight:500;color:var(--text); }
+.lib-card-badges { display:flex;gap:4px;flex-wrap:wrap; }
+.lib-badge {
+  font-size:9px;font-family:var(--mono);padding:1px 5px;border-radius:3px;
+  background:var(--bg);color:var(--text2);border:1px solid var(--border2);
+}
+.lib-badge.totp { color:#fbbf24;border-color:rgba(251,191,36,.3); }
+.lib-badge.pw   { color:var(--info);border-color:rgba(96,165,250,.3); }
+.lib-badge.cookie { color:#c084fc;border-color:rgba(192,132,252,.3); }
+.lib-sep { padding:8px 0 4px;font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:1px; }
+.lib-custom {
+  background:var(--bg3);border:1px dashed var(--border2);border-radius:8px;
+  padding:12px;cursor:pointer;transition:border-color .15s;
+  font-size:12px;color:var(--text2);text-align:center;
+}
+.lib-custom:hover { border-color:var(--accent);color:var(--text); }
+
+/* ── Section avancée ── */
+.advanced-toggle {
+  display:flex;align-items:center;gap:8px;cursor:pointer;
+  padding:10px 0;font-size:12px;color:var(--text2);
+  border-top:1px solid var(--border);margin-top:8px;
+  user-select:none;
+}
+.advanced-toggle:hover { color:var(--text); }
+.advanced-toggle-icon { font-size:10px;transition:transform .2s; }
+.advanced-toggle-icon.open { transform:rotate(90deg); }
+.advanced-section { display:none; }
+.advanced-section.open { display:block; }
+
+/* ── Quick-form (ajout simplifié) ── */
+.quick-form-site-name {
+  font-family:var(--mono);font-size:14px;color:var(--accent);
+  margin-bottom:4px;
+}
+.quick-form-badges { display:flex;gap:6px;margin-bottom:16px; }
 .dash-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -703,7 +763,7 @@ body {
       </div>
 
       <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-        <button class="btn btn-ghost" style="font-size:12px" onclick="openDrawer()">+ Ajouter un site</button>
+        <button class="btn btn-ghost" style="font-size:12px" onclick="openAddModal()">+ Ajouter un site</button>
       </div>
       <div class="dash-grid" id="dash-grid">
         <div class="empty-state" style="grid-column:1/-1">
@@ -717,7 +777,7 @@ body {
     <div class="page" id="page-sites">
       <div class="page-title">Sites</div>
       <div class="page-sub">Gérer les trackers configurés</div>
-      <button class="btn-add" onclick="openDrawer()">+ Ajouter un site</button>
+      <button class="btn-add" onclick="openAddModal()">+ Ajouter un site</button>
       <div class="card" style="padding:0; overflow:hidden;">
         <table class="sites-table" id="sites-table">
           <thead>
@@ -864,8 +924,24 @@ body {
         </div>
 
         <div class="form-section">
-          <div class="form-section-title">Flags</div>
-          <input type="text" class="form-input" id="sched-args" value="--mp --error --json-output" oninput="updateSchedPreview()">
+          <div class="form-section-title">Options de notification</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <label style="display:flex;gap:8px;align-items:center;font-size:12px;cursor:pointer">
+              <input type="checkbox" id="sched-flag-mp" checked onchange="updateSchedPreview()"> Notifier les messages privés
+            </label>
+            <label style="display:flex;gap:8px;align-items:center;font-size:12px;cursor:pointer">
+              <input type="checkbox" id="sched-flag-error" checked onchange="updateSchedPreview()"> Notifier les échecs
+            </label>
+            <label style="display:flex;gap:8px;align-items:center;font-size:12px;cursor:pointer">
+              <input type="checkbox" id="sched-flag-verbose" onchange="updateSchedPreview()"> Notifier tous les résultats
+            </label>
+            <label style="display:flex;gap:8px;align-items:center;font-size:12px;cursor:pointer">
+              <input type="checkbox" id="sched-flag-silent" onchange="updateSchedPreview()"> Aucune notification
+            </label>
+            <label style="display:flex;gap:8px;align-items:center;font-size:12px;cursor:pointer">
+              <input type="checkbox" id="sched-flag-stats" checked onchange="updateSchedPreview()"> Collecter les stats
+            </label>
+          </div>
         </div>
 
         <div class="notice info" id="sched-preview"></div>
@@ -963,6 +1039,41 @@ body {
 </div>
 
 <!-- Drawer : formulaire site -->
+<!-- Modal bibliothèque de sites -->
+<div class="lib-modal-overlay" id="lib-modal-overlay" onclick="closeLibModalIfBg(event)">
+  <div class="lib-modal">
+    <div class="lib-modal-header">
+      <div class="lib-modal-title">Choisir un site</div>
+      <button class="btn-icon" onclick="closeLibModal()">✕</button>
+    </div>
+    <div class="lib-modal-body">
+      <div class="lib-grid" id="lib-grid"></div>
+      <div class="lib-sep">Autre</div>
+      <div class="lib-custom" onclick="openDrawer()">+ Configurer manuellement</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal formulaire rapide -->
+<div class="lib-modal-overlay" id="quick-modal-overlay" onclick="closeQuickModalIfBg(event)">
+  <div class="lib-modal" style="max-width:440px">
+    <div class="lib-modal-header">
+      <div>
+        <div class="quick-form-site-name" id="quick-site-name"></div>
+        <div class="quick-form-badges" id="quick-site-badges"></div>
+      </div>
+      <button class="btn-icon" onclick="closeQuickModal()">✕</button>
+    </div>
+    <div class="lib-modal-body">
+      <div id="quick-form-fields"></div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="closeQuickModal()">Annuler</button>
+        <button class="btn btn-primary" onclick="saveQuickSite()">Ajouter</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="drawer-overlay" onclick="closeDrawerIfBg(event)">
   <div class="drawer">
     <div class="drawer-header">
@@ -993,34 +1104,6 @@ body {
       </div>
 
       <div class="form-section">
-        <div class="form-section-title">URLs</div>
-        <div class="form-row full">
-          <div class="form-group">
-            <label class="form-label">URL de login <span class="opt">*</span></label>
-            <input type="text" class="form-input" id="f-url" placeholder="https://monsite.com/login">
-          </div>
-        </div>
-        <div class="form-row full">
-          <div class="form-group">
-            <label class="form-label">POST URL <span class="opt">*</span></label>
-            <input type="text" class="form-input" id="f-post_url" placeholder="https://monsite.com/login">
-          </div>
-        </div>
-        <div class="form-row full">
-          <div class="form-group">
-            <label class="form-label">Verify URL <span class="opt">optionnel</span></label>
-            <input type="text" class="form-input" id="f-verify_url" placeholder="https://monsite.com/dashboard">
-          </div>
-        </div>
-        <div class="form-row full">
-          <div class="form-group">
-            <label class="form-label">Pre-visit URLs <span class="opt">(séparées par virgule)</span></label>
-            <input type="text" class="form-input" id="f-pre_visit_urls" placeholder="https://monsite.com/api/settings/public">
-          </div>
-        </div>
-      </div>
-
-      <div class="form-section">
         <div class="form-section-title">Identifiants</div>
         <div class="form-row">
           <div class="form-group">
@@ -1034,150 +1117,196 @@ body {
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Champ username</label>
-            <input type="text" class="form-input" id="f-username_field" placeholder="username">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Champ password</label>
-            <input type="text" class="form-input" id="f-password_field" placeholder="password">
-          </div>
-        </div>
-      </div>
-
-      <div class="form-section">
-        <div class="form-section-title">2FA / TOTP</div>
-        <div class="form-row">
-          <div class="form-group">
             <label class="form-label">Secret TOTP <span class="opt">(base32)</span></label>
             <input type="text" class="form-input" id="f-totp_secret" placeholder="JBSWY3DPEHPK3PXP">
           </div>
+        </div>
+        <div class="form-row full" id="f-session-cookies-row">
           <div class="form-group">
-            <label class="form-label">Champ TOTP</label>
-            <input type="text" class="form-input" id="f-totp_field" placeholder="mfa">
+            <label class="form-label">Fichier cookies <span class="opt">chemin absolu</span></label>
+            <input type="text" class="form-input" id="f-session_cookies_file" placeholder="/data/cookies/monsite.json">
           </div>
         </div>
-        <div class="form-row full">
+        <div class="form-row full" id="f-user-agent-row">
           <div class="form-group">
-            <label class="form-label">TOTP URL <span class="opt">(si étape séparée)</span></label>
-            <input type="text" class="form-input" id="f-totp_url" placeholder="https://monsite.com/api/auth/mfa/totp">
+            <label class="form-label">User-Agent</label>
+            <input type="text" class="form-input" id="f-user_agent" placeholder="Mozilla/5.0 ...">
           </div>
         </div>
       </div>
 
-      <div class="form-section">
-        <div class="form-section-title">Succès & Alertes</div>
-        <div class="form-row full">
-          <div class="form-group">
-            <label class="form-label">Mots-clés succès <span class="opt">(séparés par virgule)</span></label>
-            <input type="text" class="form-input" id="f-success_keywords" placeholder="Collages, Upload, Dashboard">
-          </div>
-        </div>
-        <div class="form-row full">
-          <div class="form-group">
-            <label class="form-label">Success URL contains <span class="opt">optionnel</span></label>
-            <input type="text" class="form-input" id="f-success_url_contains" placeholder="index.php">
-          </div>
-        </div>
-        <div class="form-row full">
-          <div class="form-group">
-            <label class="form-label">Alert keywords / MP <span class="opt">(séparés par virgule)</span></label>
-            <input type="text" class="form-input" id="f-alert_keywords" placeholder="message, notification">
-          </div>
-        </div>
+      <!-- Section avancée -->
+      <div class="advanced-toggle" id="advanced-toggle" onclick="toggleAdvanced()">
+        <span class="advanced-toggle-icon" id="advanced-icon">▶</span>
+        <span>Paramètres avancés</span>
       </div>
+      <div class="advanced-section" id="advanced-section">
 
-      <div class="form-section">
-        <div class="form-section-title">HTTP avancé</div>
-        <div class="form-row full">
-          <div class="form-group">
-            <label class="form-label">Extra fields <span class="opt">JSON</span></label>
-            <input type="text" class="form-input" id="f-extra_fields" placeholder='{"login": "Log in"}'>
+        <div class="form-section">
+          <div class="form-section-title">URLs</div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">URL de login <span class="opt">*</span></label>
+              <input type="text" class="form-input" id="f-url" placeholder="https://monsite.com/login">
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">POST URL <span class="opt">*</span></label>
+              <input type="text" class="form-input" id="f-post_url" placeholder="https://monsite.com/login">
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">Verify URL <span class="opt">optionnel</span></label>
+              <input type="text" class="form-input" id="f-verify_url" placeholder="https://monsite.com/dashboard">
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">Pre-visit URLs <span class="opt">(séparées par virgule)</span></label>
+              <input type="text" class="form-input" id="f-pre_visit_urls" placeholder="https://monsite.com/api/settings/public">
+            </div>
           </div>
         </div>
-        <div class="form-row full">
-          <div class="form-group">
-            <label class="form-label">Extra headers <span class="opt">JSON</span></label>
-            <input type="text" class="form-input" id="f-extra_headers" placeholder='{"X-Requested-With": "XMLHttpRequest"}'>
-          </div>
-        </div>
-        <div class="form-row full">
-          <div class="form-group">
-            <label class="form-label">CSRF field <span class="opt">optionnel</span></label>
-            <input type="text" class="form-input" id="f-csrf_field" placeholder="_token">
-          </div>
-        </div>
-        <div class="form-row full">
-          <div class="form-group">
-            <label class="form-label">Success JSON field <span class="opt">ex: token</span></label>
-            <input type="text" class="form-input" id="f-success_json_field" placeholder="token">
-          </div>
-        </div>
-        <div class="form-row full">
-          <div class="form-group">
-            <label class="form-label">Stats <span class="opt">JSON — patterns regex HTML</span></label>
-            <textarea class="form-textarea" id="f-stats" placeholder='{"upload":"class=\"up\"[^>]*>([^<]+)","ratio":"class=\"ratio\"[^>]*>([^<]+)"}'></textarea>
-            <div class="form-hint">Clés libres, valeurs = pattern regex. Utilisé avec --stats.</div>
-          </div>
-        </div>
-        <div class="form-row full">
-          <div class="form-group">
-            <label class="form-label">Stats JSON <span class="opt">JSON — chemins dans une réponse API</span></label>
-            <textarea class="form-textarea" id="f-stats_json" placeholder='{"upload":"data.stats.uploaded","ratio":"data.stats.ratio"}'></textarea>
-            <div class="form-hint">Clés libres, valeurs = chemin pointé dans le JSON retourné.</div>
-          </div>
-        </div>
-      </div>
 
-      <div class="form-section">
-        <div class="form-section-title">Options</div>
-        <div class="form-toggle-row">
-          <div>
-            <div class="form-toggle-label">API JSON</div>
-            <div class="form-toggle-sub">Login via API REST (pas de form HTML)</div>
+        <div class="form-section">
+          <div class="form-section-title">Champs du formulaire</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Champ username</label>
+              <input type="text" class="form-input" id="f-username_field" placeholder="username">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Champ password</label>
+              <input type="text" class="form-input" id="f-password_field" placeholder="password">
+            </div>
           </div>
-          <div class="toggle-pill" id="f-api_json-toggle" onclick="toggleFormPill('f-api_json-toggle','f-api_json')"></div>
-          <input type="hidden" id="f-api_json" value="false">
-        </div>
-        <div class="form-toggle-row">
-          <div>
-            <div class="form-toggle-label">curl_cffi (Cloudflare)</div>
-            <div class="form-toggle-sub">Impersonne Firefox pour contourner Cloudflare</div>
-          </div>
-          <div class="toggle-pill" id="f-use_curl_cffi-toggle" onclick="toggleFormPill('f-use_curl_cffi-toggle','f-use_curl_cffi')"></div>
-          <input type="hidden" id="f-use_curl_cffi" value="false">
-        </div>
-        <div class="form-toggle-row">
-          <div>
-            <div class="form-toggle-label">Playwright</div>
-            <div class="form-toggle-sub">Navigateur headless Firefox complet</div>
-          </div>
-          <div class="toggle-pill" id="f-use_playwright-toggle" onclick="toggleFormPill('f-use_playwright-toggle','f-use_playwright')"></div>
-          <input type="hidden" id="f-use_playwright" value="false">
-        </div>
-        <div class="form-toggle-row">
-          <div>
-            <div class="form-toggle-label">Extract hidden fields</div>
-            <div class="form-toggle-sub">Auto-extraction des champs cachés du formulaire</div>
-          </div>
-          <div class="toggle-pill" id="f-extract_hidden_fields-toggle" onclick="toggleFormPill('f-extract_hidden_fields-toggle','f-extract_hidden_fields')"></div>
-          <input type="hidden" id="f-extract_hidden_fields" value="false">
-        </div>
-        <div class="form-toggle-row">
-          <div>
-            <div class="form-toggle-label">Playwright fetch verify</div>
-            <div class="form-toggle-sub">Récupère la verify_url via Playwright après login</div>
-          </div>
-          <div class="toggle-pill" id="f-playwright_fetch_verify-toggle" onclick="toggleFormPill('f-playwright_fetch_verify-toggle','f-playwright_fetch_verify')"></div>
-          <input type="hidden" id="f-playwright_fetch_verify" value="false">
-        </div>
-        <div class="form-row full" style="margin-top:12px">
-          <div class="form-group">
-            <label class="form-label">Playwright submit <span class="opt">sélecteur CSS du bouton</span></label>
-            <input type="text" class="form-input" id="f-playwright_submit" placeholder="button[type=submit]">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Champ TOTP</label>
+              <input type="text" class="form-input" id="f-totp_field" placeholder="mfa">
+            </div>
+            <div class="form-group">
+              <label class="form-label">TOTP URL <span class="opt">si étape séparée</span></label>
+              <input type="text" class="form-input" id="f-totp_url" placeholder="https://monsite.com/2fa">
+            </div>
           </div>
         </div>
-      </div>
 
+        <div class="form-section">
+          <div class="form-section-title">Succès & Alertes</div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">Mots-clés succès <span class="opt">(séparés par virgule)</span></label>
+              <input type="text" class="form-input" id="f-success_keywords" placeholder="Collages, Upload, Dashboard">
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">Success URL contains <span class="opt">optionnel</span></label>
+              <input type="text" class="form-input" id="f-success_url_contains" placeholder="index.php">
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">Alert keywords / MP <span class="opt">(séparés par virgule)</span></label>
+              <input type="text" class="form-input" id="f-alert_keywords" placeholder="message, notification">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">HTTP avancé</div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">Extra fields <span class="opt">JSON</span></label>
+              <input type="text" class="form-input" id="f-extra_fields" placeholder='{"login": "Log in"}'>
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">Extra headers <span class="opt">JSON</span></label>
+              <input type="text" class="form-input" id="f-extra_headers" placeholder='{"X-Requested-With": "XMLHttpRequest"}'>
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">CSRF field <span class="opt">optionnel</span></label>
+              <input type="text" class="form-input" id="f-csrf_field" placeholder="_token">
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">Success JSON field</label>
+              <input type="text" class="form-input" id="f-success_json_field" placeholder="token">
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">Stats <span class="opt">regex HTML — JSON</span></label>
+              <textarea class="form-textarea" id="f-stats" placeholder='{"upload":"class=\"up\"[^>]*>([^<]+)","ratio":"..."}'></textarea>
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="form-group">
+              <label class="form-label">Stats JSON <span class="opt">chemins API</span></label>
+              <textarea class="form-textarea" id="f-stats_json" placeholder='{"upload":"data.stats.uploaded"}'></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Options</div>
+          <div class="form-toggle-row">
+            <div>
+              <div class="form-toggle-label">API JSON</div>
+              <div class="form-toggle-sub">Login via API REST (pas de form HTML)</div>
+            </div>
+            <div class="toggle-pill" id="f-api_json-toggle" onclick="toggleFormPill('f-api_json-toggle','f-api_json')"></div>
+            <input type="hidden" id="f-api_json" value="false">
+          </div>
+          <div class="form-toggle-row">
+            <div>
+              <div class="form-toggle-label">curl_cffi (Cloudflare)</div>
+              <div class="form-toggle-sub">Impersonne Firefox pour contourner Cloudflare</div>
+            </div>
+            <div class="toggle-pill" id="f-use_curl_cffi-toggle" onclick="toggleFormPill('f-use_curl_cffi-toggle','f-use_curl_cffi')"></div>
+            <input type="hidden" id="f-use_curl_cffi" value="false">
+          </div>
+          <div class="form-toggle-row">
+            <div>
+              <div class="form-toggle-label">Playwright</div>
+              <div class="form-toggle-sub">Navigateur headless Firefox complet</div>
+            </div>
+            <div class="toggle-pill" id="f-use_playwright-toggle" onclick="toggleFormPill('f-use_playwright-toggle','f-use_playwright')"></div>
+            <input type="hidden" id="f-use_playwright" value="false">
+          </div>
+          <div class="form-toggle-row">
+            <div>
+              <div class="form-toggle-label">Extract hidden fields</div>
+              <div class="form-toggle-sub">Auto-extraction des champs cachés du formulaire</div>
+            </div>
+            <div class="toggle-pill" id="f-extract_hidden_fields-toggle" onclick="toggleFormPill('f-extract_hidden_fields-toggle','f-extract_hidden_fields')"></div>
+            <input type="hidden" id="f-extract_hidden_fields" value="false">
+          </div>
+          <div class="form-toggle-row">
+            <div>
+              <div class="form-toggle-label">Playwright fetch verify</div>
+              <div class="form-toggle-sub">Récupère la verify_url via Playwright après login</div>
+            </div>
+            <div class="toggle-pill" id="f-playwright_fetch_verify-toggle" onclick="toggleFormPill('f-playwright_fetch_verify-toggle','f-playwright_fetch_verify')"></div>
+            <input type="hidden" id="f-playwright_fetch_verify" value="false">
+          </div>
+          <div class="form-row full" style="margin-top:12px">
+            <div class="form-group">
+              <label class="form-label">Playwright submit <span class="opt">sélecteur CSS</span></label>
+              <input type="text" class="form-input" id="f-playwright_submit" placeholder="button[type=submit]">
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /advanced-section -->
     </div>
     <div class="drawer-footer">
       <button class="btn btn-danger" id="drawer-delete-btn" style="display:none;margin-right:auto" onclick="deleteSite()">Supprimer</button>
@@ -1188,6 +1317,8 @@ body {
 </div>
 
 <script>
+const SITE_LIBRARY = {"ABN": {"config": {"name": "ABN", "url": "https://abn.lol/Home/Login", "post_url": "https://abn.lol/Home/Login", "username_field": "Username", "password_field": "Password", "csrf_field": "__RequestVerificationToken", "alert_label": "MP non lu"}, "needs_totp": false, "needs_cookies": false, "needs_verify_username": false, "has_playwright": false}, "Abnormal": {"config": {"name": "Abnormal", "url": "https://abn.lol/Home/Login", "post_url": "https://abn.lol/Home/Login", "verify_url": "https://abn.lol/", "username_field": "Username", "password_field": "Password"}, "needs_totp": false, "needs_cookies": false, "needs_verify_username": false, "has_playwright": false}, "AvistaZ": {"config": {"name": "AvistaZ", "session_cookies_file": "/root/Autovisit/cookies/avistaz.json", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36", "verify_url": "https://avistaz.to/"}, "needs_totp": false, "needs_cookies": true, "needs_verify_username": true, "has_playwright": false}, "Blutopia": {"config": {"name": "Blutopia", "url": "https://blutopia.cc/login", "post_url": "https://blutopia.cc/login", "username_field": "username", "password_field": "password", "extract_hidden_fields": true, "totp_field": "code", "totp_url": "https://blutopia.cc/two-factor-challenge", "use_playwright": true, "playwright_submit": "button.auth-form__primary-button", "verify_url": "https://blutopia.cc/"}, "needs_totp": true, "needs_cookies": false, "needs_verify_username": true, "has_playwright": true}, "BroadcasTheNet": {"config": {"name": "BroadcasTheNet", "session_cookies_file": "/root/Autovisit/cookies/btn.json", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36", "verify_url": "https://broadcasthe.net/index.php", "url": "https://broadcasthe.net/login.php", "post_url": "https://broadcasthe.net/login.php", "username_field": "username", "password_field": "password"}, "needs_totp": false, "needs_cookies": false, "needs_verify_username": false, "has_playwright": false}, "C411": {"config": {"name": "C411", "url": "https://c411.org/login", "post_url": "https://c411.org/api/auth/login", "verify_url": "https://c411.org/api/auth/me", "pre_visit_urls": ["https://c411.org/api/settings/public"], "username_field": "username", "password_field": "password", "totp_url": "https://c411.org/api/auth/mfa/totp", "success_json_field": "authenticated", "api_json": true, "use_curl_cffi": true}, "needs_totp": true, "needs_cookies": false, "needs_verify_username": false, "has_playwright": false}, "CinemaZ": {"config": {"name": "CinemaZ", "session_cookies_file": "/root/Autovisit/cookies/cinemaz.json", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36", "verify_url": "https://cinemaz.to/"}, "needs_totp": false, "needs_cookies": true, "needs_verify_username": true, "has_playwright": false}, "GazelleGames": {"config": {"name": "GazelleGames", "session_cookies_file": "/root/Autovisit/cookies/gazellegames.json", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36", "alert_label": "MP non lu", "verify_url": "https://gazellegames.net/user.php?id=xxx"}, "needs_totp": false, "needs_cookies": true, "needs_verify_username": true, "has_playwright": false}, "GenerationFree": {"config": {"name": "GenerationFree", "url": "https://generation-free.org/login", "post_url": "https://generation-free.org/login", "username_field": "username", "password_field": "password", "extract_hidden_fields": true, "use_playwright": true, "playwright_submit": "button.auth-form__primary-button", "verify_url": "https://generation-free.org/"}, "needs_totp": false, "needs_cookies": false, "needs_verify_username": true, "has_playwright": true}, "HDF": {"config": {"name": "HDF", "url": "https://hdf.world/login.php", "post_url": "https://hdf.world/login.php", "username_field": "username", "password_field": "password", "success_url_contains": "index.php"}, "needs_totp": false, "needs_cookies": false, "needs_verify_username": false, "has_playwright": false}, "HDO": {"config": {"name": "HDO", "url": "https://hd-only.org/login.php", "post_url": "https://hd-only.org/login.php", "username_field": "username", "password_field": "password", "totp_field": "twofa", "success_url_contains": "index.php", "alert_label": "MP non lu", "verify_url": "https://hd-only.org/user.php?id=xxx"}, "needs_totp": true, "needs_cookies": false, "needs_verify_username": true, "has_playwright": false}, "MTeam": {"config": {"name": "MTeam", "url": "https://www.mteam.fr/", "post_url": "https://www.mteam.fr/actions_login.php?action=login", "username_field": "pseudo", "password_field": "pass", "verify_url": "https://www.mteam.fr/home.php?ref=welcome"}, "needs_totp": false, "needs_cookies": false, "needs_verify_username": true, "has_playwright": false}, "Nexum": {"config": {"name": "Nexum", "url": "https://nexum-core.com/login", "post_url": "https://nexum-core.com/login", "verify_url": "https://nexum-core.com/", "username_field": "username", "password_field": "password", "totp_field": "code", "totp_url": "https://nexum-core.com/login/2fa", "success_url_contains": "nexum-core.com"}, "needs_totp": true, "needs_cookies": false, "needs_verify_username": false, "has_playwright": false}, "Nostradamus": {"config": {"name": "Nostradamus", "url": "https://nostradamus.foo/sign-in", "username_field": "", "password_field": "password", "use_playwright": true, "playwright_password_selector": "#private-key-input", "playwright_submit": "button[type=submit]", "playwright_wait_url_change": 30, "playwright_post_login_wait": 5, "playwright_fetch_verify": true, "playwright_post_verify_wait": 5, "verify_url": "https://nostradamus.foo/activity"}, "needs_totp": false, "needs_cookies": false, "needs_verify_username": true, "has_playwright": true}, "Orpheus": {"config": {"name": "Orpheus", "url": "https://orpheus.network/login.php", "post_url": "https://orpheus.network/login.php", "username_field": "username", "password_field": "password", "totp_field": "mfa", "success_url_contains": "index.php"}, "needs_totp": true, "needs_cookies": false, "needs_verify_username": false, "has_playwright": false}, "PassThePopcorn": {"config": {"name": "PassThePopcorn", "session_cookies_file": "/root/Autovisit/cookies/ptp.json", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36", "verify_url": "https://passthepopcorn.me/index.php", "alert_label": "MP non lu"}, "needs_totp": false, "needs_cookies": true, "needs_verify_username": true, "has_playwright": false}, "PhoenixProject": {"config": {"name": "PhoenixProject", "url": "https://phoenixproject.app/login.php", "post_url": "https://phoenixproject.app/login.php", "username_field": "username", "password_field": "password", "totp_field": "twofa", "success_url_contains": "index.php"}, "needs_totp": true, "needs_cookies": false, "needs_verify_username": false, "has_playwright": false}, "Redacted": {"config": {"name": "Redacted", "url": "https://redacted.sh/login.php", "post_url": "https://redacted.sh/login.php", "username_field": "username", "password_field": "password", "totp_field": "qrcode_confirm", "success_url_contains": "index.php"}, "needs_totp": true, "needs_cookies": false, "needs_verify_username": false, "has_playwright": false}, "TeamFlix": {"config": {"name": "TeamFlix", "url": "https://tracker.teamflix.cc/login", "post_url": "https://tracker.teamflix.cc/login", "username_field": "username", "password_field": "password", "timeout": 90, "verify_url": "https://tracker.teamflix.cc/pages/rules"}, "needs_totp": false, "needs_cookies": false, "needs_verify_username": false, "has_playwright": false}, "TheOldSchool": {"config": {"name": "TheOldSchool", "url": "https://theoldschool.cc/login", "post_url": "https://theoldschool.cc/login", "verify_url": "https://theoldschool.cc/users/Zup", "username_field": "username", "password_field": "password", "playwright_submit": "button.auth-form__primary-button", "use_playwright": true, "playwright_fetch_verify": true}, "needs_totp": false, "needs_cookies": false, "needs_verify_username": true, "has_playwright": true}, "Torr9": {"config": {"name": "Torr9", "url": "https://torr9.net/login", "post_url": "https://api.torr9.net/api/v1/auth/login", "verify_url": "https://api.torr9.net/api/v1/users/me", "username_field": "username", "password_field": "password", "success_json_field": "token", "api_json": true, "use_curl_cffi": true, "stats_base": 1000}, "needs_totp": false, "needs_cookies": false, "needs_verify_username": false, "has_playwright": false}, "TorrentLeech": {"config": {"name": "TorrentLeech", "url": "https://www.torrentleech.org/", "post_url": "https://www.torrentleech.org/user/account/login/", "username_field": "username", "password_field": "password", "verify_url": "https://www.torrentleech.org/", "alert_label": "MP non lu"}, "needs_totp": false, "needs_cookies": false, "needs_verify_username": false, "has_playwright": false}, "Tr4ker": {"config": {"name": "Tr4ker", "url": "https://tr4ker.net/login", "post_url": "https://tr4ker.net/api/auth/login", "username_field": "identifier", "password_field": "password", "api_json": true, "use_playwright": true, "playwright_stats_url": "https://tr4ker.net/api/me", "mp_url": "https://tr4ker.net/api/me/notifications/unread", "mp_json_field": "unread"}, "needs_totp": false, "needs_cookies": false, "needs_verify_username": false, "has_playwright": true}, "UltimZone": {"config": {"name": "UltimZone", "session_cookies_file": "/root/Autovisit/cookies/ultimzone.json", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36", "verify_url": "https://ultim-zone.in/index.php"}, "needs_totp": false, "needs_cookies": true, "needs_verify_username": true, "has_playwright": false}, "WorldInHD": {"config": {"name": "WorldInHD", "url": "https://world-in-hd.net/login", "post_url": "https://world-in-hd.net/login_check", "username_field": "_username", "password_field": "_password", "csrf_field": "_csrf_token", "verify_url": "https://world-in-hd.net/"}, "needs_totp": false, "needs_cookies": false, "needs_verify_username": true, "has_playwright": false}, "YggReborn": {"config": {"name": "YggReborn", "url": "https://www.yggreborn.org/login", "post_url": "https://www.yggreborn.org/login", "username_field": "identifier", "password_field": "password", "csrf_field": "csrf_token", "alert_label": "MP non lu", "verify_url": "https://www.yggreborn.org/account/"}, "needs_totp": false, "needs_cookies": false, "needs_verify_username": true, "has_playwright": false}};
+
 // ─── State ────────────────────────────────────────────────────────────────────
 let currentPage = 'dashboard';
 let editingIdx  = null;
@@ -1253,8 +1384,8 @@ async function loadDashboard() {
     let cls = 'disabled', statusTxt = 'Non exécuté';
     if (enabled && st) {
       if (st.disabled) { cls = 'disabled'; statusTxt = 'Désactivé'; }
-      else if (st.ok === true  && !st.alert) { cls = 'ok';  statusTxt = 'OK'; cntOk++; }
-      else if (st.ok === true  &&  st.alert) { cls = 'warn'; statusTxt = 'OK'; cntMp++; }
+      else if (st.ok === true  && !st.alert) { cls = 'ok';   statusTxt = 'OK'; cntOk++; }
+      else if (st.ok === true  &&  st.alert) { cls = 'warn'; statusTxt = 'OK'; cntOk++; cntMp++; }
       else if (st.ok === false) { cls = 'err'; statusTxt = 'ÉCHEC'; cntErr++; }
     } else if (!enabled) { cntDis++; }
 
@@ -1374,6 +1505,17 @@ function openDrawer(idx) {
   editingIdx = (idx !== undefined) ? idx : null;
   document.getElementById('drawer-title').textContent = editingIdx !== null ? 'Modifier site' : 'Nouveau site';
   document.getElementById('drawer-delete-btn').style.display = editingIdx !== null ? 'inline-flex' : 'none';
+
+  // Réinitialiser la section avancée
+  const advSection = document.getElementById('advanced-section');
+  const advIcon    = document.getElementById('advanced-icon');
+  if (editingIdx !== null) {
+    advSection.classList.add('open');
+    advIcon.classList.add('open');
+  } else {
+    advSection.classList.remove('open');
+    advIcon.classList.remove('open');
+  }
 
   // Reset
   STR_FIELDS.forEach(f => {
@@ -1662,13 +1804,30 @@ async function loadSchedule() {
   document.getElementById('sched-min-d').value         = data.minute_d    ?? 0;
   document.getElementById('sched-hour-w').value        = data.hour_w      ?? 3;
   document.getElementById('sched-min-w').value         = data.minute_w    ?? 0;
-  document.getElementById('sched-args').value          = data.args        ?? '--mp --error --json-output';
+  // Charger les flags depuis args sauvegardé
+  const args = data.args ?? '--mp --error --json-output';
+  document.getElementById('sched-flag-mp').checked      = args.includes('--mp');
+  document.getElementById('sched-flag-error').checked   = args.includes('--error');
+  document.getElementById('sched-flag-verbose').checked = args.includes('--verbose');
+  document.getElementById('sched-flag-silent').checked  = args.includes('--silent');
+  document.getElementById('sched-flag-stats').checked   = args.includes('--stats');
   const days = data.weekdays || [];
   document.querySelectorAll('.wd-cb').forEach(cb => {
     cb.checked = days.includes(parseInt(cb.value));
   });
   setPill('sched-toggle', schedEnabled);
   updateSchedMode();
+}
+
+function buildSchedArgs() {
+  const flags = [];
+  if (document.getElementById('sched-flag-mp').checked)      flags.push('--mp');
+  if (document.getElementById('sched-flag-error').checked)   flags.push('--error');
+  if (document.getElementById('sched-flag-verbose').checked) flags.push('--verbose');
+  if (document.getElementById('sched-flag-silent').checked)  flags.push('--silent');
+  if (document.getElementById('sched-flag-stats').checked)   flags.push('--stats');
+  flags.push('--json-output');
+  return flags.join(' ');
 }
 
 function toggleSched() {
@@ -1679,7 +1838,7 @@ function toggleSched() {
 
 function updateSchedPreview() {
   const mode  = document.getElementById('sched-mode').value;
-  const args  = document.getElementById('sched-args').value;
+  const args  = buildSchedArgs();
   const state = schedEnabled ? 'ACTIVÉ' : 'DÉSACTIVÉ';
   const JOURS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
   let desc = '';
@@ -1698,7 +1857,7 @@ function updateSchedPreview() {
     desc = checked.length ? `${checked.join(', ')} à ${h}:${m}` : 'aucun jour sélectionné';
   }
   document.getElementById('sched-preview').textContent =
-    `[${state}] Exécution ${desc} — python3 autovisit.py ${args}`;
+    `[${state}] Exécution ${desc} — ${args}`;
 }
 
 document.querySelectorAll('.wd-cb').forEach(cb => cb.addEventListener('change', updateSchedPreview));
@@ -1716,7 +1875,7 @@ async function saveSched() {
     hour_w:     parseInt(document.getElementById('sched-hour-w').value),
     minute_w:   parseInt(document.getElementById('sched-min-w').value),
     weekdays:   days,
-    args:       document.getElementById('sched-args').value,
+    args:       buildSchedArgs(),
   };
   await fetch('/api/schedule', {
     method: 'POST',
@@ -1796,6 +1955,210 @@ setInterval(pollRunning, 5000);
 const initPage = location.pathname.replace('/', '').replace('/', '') || 'dashboard';
 navigateTo(initPage, false);
 updateSchedPreview();
+
+
+// ─── Bibliothèque de sites ────────────────────────────────────────────────────
+
+let quickSiteName = null;
+
+async function openAddModal() {
+  const res = await fetch('/api/sites');
+  const cfg = await res.json();
+  const existingNames = new Set((cfg.sites || []).map(s => s.name));
+
+  // Extraire les domaines des sites existants pour éviter les doublons d'URL
+  function getDomain(url) {
+    try { return new URL(url).hostname; } catch { return url; }
+  }
+  const existingDomains = new Set(
+    (cfg.sites || []).flatMap(s => [s.url, s.post_url, s.verify_url].filter(Boolean).map(getDomain))
+  );
+
+  const grid = document.getElementById('lib-grid');
+  grid.innerHTML = '';
+  Object.entries(SITE_LIBRARY).sort().forEach(([name, meta]) => {
+    if (existingNames.has(name)) return;
+    const libDomain = getDomain(meta.config.url || meta.config.verify_url || '');
+    if (libDomain && existingDomains.has(libDomain)) return;
+    const badges = [];
+    if (meta.needs_totp)     badges.push('<span class="lib-badge totp">TOTP</span>');
+    if (meta.needs_cookies)  badges.push('<span class="lib-badge cookie">COOKIES</span>');
+    if (meta.has_playwright) badges.push('<span class="lib-badge pw">PW</span>');
+    const card = document.createElement('div');
+    card.className = 'lib-card';
+    card.innerHTML = `<div class="lib-card-name">${name}</div><div class="lib-card-badges">${badges.join('')}</div>`;
+    card.onclick = () => openQuickModal(name);
+    grid.appendChild(card);
+  });
+
+  if (grid.children.length === 0) {
+    grid.innerHTML = '<div style="color:var(--text2);font-size:12px;padding:8px 0">Tous les sites pré-configurés sont déjà ajoutés.</div>';
+  }
+
+  document.getElementById('lib-modal-overlay').classList.add('open');
+}
+
+function closeLibModal() {
+  document.getElementById('lib-modal-overlay').classList.remove('open');
+}
+
+function closeLibModalIfBg(e) {
+  if (e.target === document.getElementById('lib-modal-overlay')) closeLibModal();
+}
+
+function openQuickModal(name) {
+  closeLibModal();
+  quickSiteName = name;
+  const meta = SITE_LIBRARY[name];
+  const cfg  = meta.config;
+
+  document.getElementById('quick-site-name').textContent = name;
+  const badgesEl = document.getElementById('quick-site-badges');
+  const badges = [];
+  if (meta.needs_totp)    badges.push('<span class="lib-badge totp">TOTP requis</span>');
+  if (meta.needs_cookies) badges.push('<span class="lib-badge cookie">Cookies de session</span>');
+  if (cfg.use_playwright) badges.push('<span class="lib-badge pw">Playwright</span>');
+  badgesEl.innerHTML = badges.join('');
+
+  const fields = document.getElementById('quick-form-fields');
+  let html = '';
+
+  if (meta.needs_cookies) {
+    html += `
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">Fichier cookies <span class="opt">chemin absolu</span></label>
+        <input type="text" class="form-input" id="qf-session_cookies_file" placeholder="/data/cookies/${name.toLowerCase()}.json">
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">User-Agent</label>
+        <input type="text" class="form-input" id="qf-user_agent" value="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36">
+      </div>`;
+    // Sites cookies avec aussi login/pass
+    if (cfg.post_url && cfg.username_field) {
+      html += `
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="form-group">
+            <label class="form-label">Username</label>
+            <input type="text" class="form-input" id="qf-username" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-input" id="qf-password" autocomplete="new-password">
+          </div>
+        </div>`;
+    }
+  } else {
+    html += `
+      <div class="form-row" style="margin-bottom:12px">
+        <div class="form-group">
+          <label class="form-label">Username <span class="opt">*</span></label>
+          <input type="text" class="form-input" id="qf-username" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password <span class="opt">*</span></label>
+          <input type="password" class="form-input" id="qf-password" autocomplete="new-password">
+        </div>
+      </div>`;
+  }
+
+  if (meta.needs_totp) {
+    html += `
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">Secret TOTP <span class="opt">base32</span></label>
+        <input type="text" class="form-input" id="qf-totp_secret" placeholder="JBSWY3DPEHPK3PXP">
+      </div>`;
+  }
+
+  if (meta.needs_verify_username && cfg.verify_url && cfg.verify_url.includes('xxx')) {
+    html += `
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">Votre identifiant (pour la verify URL)</label>
+        <input type="text" class="form-input" id="qf-verify_username" placeholder="MonPseudo">
+      </div>`;
+  }
+
+  // success_keywords avec TonLogin → demander le pseudo
+  const needsSuccessUser = cfg.success_keywords && cfg.success_keywords.includes('TonLogin');
+  if (needsSuccessUser && !html.includes('qf-verify_username')) {
+    html += `
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">Votre pseudo sur ce site</label>
+        <input type="text" class="form-input" id="qf-verify_username" placeholder="MonPseudo">
+      </div>`;
+  }
+
+  fields.innerHTML = html;
+  document.getElementById('quick-modal-overlay').classList.add('open');
+  // Focus premier champ
+  setTimeout(() => {
+    const first = fields.querySelector('input');
+    if (first) first.focus();
+  }, 100);
+}
+
+function closeQuickModal() {
+  document.getElementById('quick-modal-overlay').classList.remove('open');
+  quickSiteName = null;
+}
+
+function closeQuickModalIfBg(e) {
+  if (e.target === document.getElementById('quick-modal-overlay')) closeQuickModal();
+}
+
+async function saveQuickSite() {
+  const meta = SITE_LIBRARY[quickSiteName];
+  const cfg  = JSON.parse(JSON.stringify(meta.config)); // deep copy
+
+  // Appliquer les champs remplis
+  const username  = document.getElementById('qf-username')?.value.trim();
+  const password  = document.getElementById('qf-password')?.value;
+  const totp      = document.getElementById('qf-totp_secret')?.value.trim();
+  const cookies   = document.getElementById('qf-session_cookies_file')?.value.trim();
+  const ua        = document.getElementById('qf-user_agent')?.value.trim();
+  const verifyUser = document.getElementById('qf-verify_username')?.value.trim();
+
+  if (username)  cfg.username = username;
+  if (password)  cfg.password = password;
+  if (totp)      cfg.totp_secret = totp;
+  if (cookies)   cfg.session_cookies_file = cookies;
+  if (ua)        cfg.user_agent = ua;
+  cfg.enabled = true;
+
+  // Remplacer TonLogin dans success_keywords et verify_url par le pseudo
+  if (verifyUser) {
+    if (cfg.success_keywords) {
+      cfg.success_keywords = cfg.success_keywords.map(k => k === 'TonLogin' ? verifyUser : k);
+    }
+    if (cfg.verify_url) {
+      cfg.verify_url = cfg.verify_url.replace('TonLogin', verifyUser).replace('Zup', verifyUser).replace('xxx', verifyUser);
+    }
+  }
+
+  // Validation minimale
+  if (!meta.needs_cookies && !username) {
+    alert('Username obligatoire.'); return;
+  }
+
+  const res = await fetch('/api/sites', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(cfg)
+  });
+  if (res.ok) {
+    closeQuickModal();
+    await loadSites();
+    if (currentPage === 'dashboard') loadDashboard();
+  }
+}
+
+// ─── Toggle section avancée dans le drawer ────────────────────────────────────
+function toggleAdvanced() {
+  const section = document.getElementById('advanced-section');
+  const icon    = document.getElementById('advanced-icon');
+  section.classList.toggle('open');
+  icon.classList.toggle('open');
+}
+
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 async function doLogout() {
