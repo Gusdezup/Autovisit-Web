@@ -1,15 +1,9 @@
-version: "3.9"
-
 services:
   autovisit-web:
-    build: .
+    image: ghcr.io/gusdezup/autovisit-web:latest
     container_name: autovisit-web
-    restart: unless-stopped
     ports:
       - "4567:4567"
     volumes:
       - ./data:/data
-    environment:
-      - AUTOVISIT_DIR=/data
-      - AUTOVISIT_SCRIPT=/app/autovisit.py
-      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
