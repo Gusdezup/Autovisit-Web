@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>autovisit.web — connexion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:      #0d0f12;
+      --bg2:     #13161b;
+      --bg3:     #1a1e26;
+      --border:  #252a35;
+      --border2: #2f3645;
+      --text:    #c8d0de;
+      --text2:   #6b7a95;
+      --text3:   #3d4a60;
+      --accent:  #4ade80;
+      --accent2: #22c55e;
+      --err:     #f87171;
+      --mono:    'IBM Plex Mono', monospace;
+      --sans:    'IBM Plex Sans', sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo {
+      font-family: var(--mono);
+      font-size: 18px;
+      color: var(--accent);
+      margin-bottom: 32px;
+      letter-spacing: -0.5px;
+    }
+    .logo span { color: var(--text2); font-weight: 400; }
+
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 32px;
+      width: 100%;
+      max-width: 360px;
+    }
+
+    .card-title {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 24px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 11px;
+      color: var(--text2);
+      margin-bottom: 6px;
+      font-family: var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-input {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 6px;
+      padding: 9px 12px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: var(--sans);
+      outline: none;
+      transition: border-color .15s;
+    }
+    .form-input:focus { border-color: var(--accent); }
+
+    .btn {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: var(--mono);
+      cursor: pointer;
+      transition: background .15s;
+      margin-top: 8px;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #0d0f12;
+      font-weight: 600;
+    }
+    .btn-primary:hover { background: var(--accent2); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+    .error-msg {
+      margin-top: 14px;
+      padding: 10px 12px;
+      background: rgba(248,113,113,.08);
+      border: 1px solid rgba(248,113,113,.25);
+      border-radius: 6px;
+      color: var(--err);
+      font-size: 12px;
+      display: none;
+    }
+
+    .default-banner {
+      margin-top: 16px;
+      padding: 10px 12px;
+      background: rgba(251,191,36,.06);
+      border: 1px solid rgba(251,191,36,.2);
+      border-radius: 6px;
+      color: #fbbf24;
+      font-size: 11px;
+      font-family: var(--mono);
+      line-height: 1.6;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="logo">autovisit<span>.web</span></div>
+
+  <div class="card">
+    <div class="card-title">Connexion</div>
+
+    <div class="form-group">
+      <label class="form-label">Identifiant</label>
+      <input type="text" class="form-input" id="username" autocomplete="username" autofocus>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mot de passe</label>
+      <input type="password" class="form-input" id="password" autocomplete="current-password">
+    </div>
+
+    <button class="btn btn-primary" id="login-btn" onclick="doLogin()">Se connecter</button>
+
+    <div class="error-msg" id="error-msg"></div>
+
+    <div class="default-banner" id="default-banner">
+      ⚠ Credentials par défaut détectés<br>
+      Pensez à changer votre mot de passe<br>
+      dans Paramètres après connexion.
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('password').addEventListener('keydown', e => {
+      if (e.key === 'Enter') doLogin();
+    });
+    document.getElementById('username').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('password').focus();
+    });
+
+    async function doLogin() {
+      const btn      = document.getElementById('login-btn');
+      const errEl    = document.getElementById('error-msg');
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!username || !password) {
+        showError('Veuillez remplir tous les champs.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '…';
+      errEl.style.display = 'none';
+
+      try {
+        const res  = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({username, password})
+        });
+        const data = await res.json();
+        if (data.ok) {
+          if (data.is_default) {
+            document.getElementById('default-banner').style.display = 'block';
+            setTimeout(() => { window.location.href = '/'; }, 1800);
+          } else {
+            window.location.href = '/';
+          }
+        } else {
+          showError(data.error || 'Identifiants incorrects.');
+          btn.disabled = false;
+          btn.textContent = 'Se connecter';
+        }
+      } catch(e) {
+        showError('Erreur réseau.');
+        btn.disabled = false;
+        btn.textContent = 'Se connecter';
+      }
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('error-msg');
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+  </script>
+</body>
+</html>
