@@ -1,6 +1,8 @@
 flask>=3.0
+flask-login
 apscheduler>=3.10
 requests
 pyotp
 curl_cffi
 playwright
+bcrypt
