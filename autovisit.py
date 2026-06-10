@@ -1152,10 +1152,12 @@ def main():
             send_apprise(cfg, "Autovisit — Rétablissement", body)
         elif not args.silent and notify_success:
             lines = ["Tous les sites OK"]
-            if notify_stats and args.stats:
-                for s in status_sites:
-                    if s.get("stats"):
-                        lines.append(s["name"] + " : " + s["stats"])
+            for s in status_sites:
+                if s.get("ok"):
+                    line = s["name"]
+                    if notify_stats and args.stats and s.get("stats"):
+                        line += " : " + s["stats"]
+                    lines.append(line)
             send_apprise(cfg, "Autovisit — Succès", "\n".join(lines))
 
     # Ecriture status.json (toujours)
